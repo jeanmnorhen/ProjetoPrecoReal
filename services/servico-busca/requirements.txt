@@ -1,0 +1,5 @@
+Flask
+elasticsearch
+confluent-kafka
+Flask-Cors
+firebase-admin
