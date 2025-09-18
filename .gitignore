@@ -34,3 +34,5 @@ pip-wheel-metadata/
 Thumbs.db
 
 documentacao/
+.gemini/
+gha-creds-*.json

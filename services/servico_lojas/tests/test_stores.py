@@ -52,8 +52,7 @@ def mock_all_dependencies():
     # 2. Mock PostGIS/SQLAlchemy session
     mock_sql_session = MagicMock()
     # Configure the query chain to return a mock object that can be configured later
-    mock_location_record = MockStoreLocation('test_store_123', 'POINT(-46.6 -23.5)')
-    mock_sql_session.query.return_value.filter_by.return_value.first.return_value = mock_location_record # Default to mock_location_record
+    mock_sql_session.query.return_value.filter_by.return_value.first.return_value = None # Default to None
     mock_sql_session.execute.return_value = MagicMock() # For health check SELECT 1
 
     # 3. Mock Kafka Producer
@@ -172,7 +171,7 @@ def test_get_store_with_location(client, mock_all_dependencies):
 def test_get_store_without_location(client, mock_all_dependencies):
     """Test getting a store who does not have a location in PostGIS."""
     # Setup mock to return None for the location query
-    mock_all_dependencies["db_session"].query.return_value.filter_by.return_value.first.return_value = None
+    # This is now the default in mock_all_dependencies
     
     response = client.get('/api/stores/test_store_123')
 
