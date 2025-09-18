@@ -2,10 +2,18 @@ import pytest
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone
 from firebase_admin import firestore
+import sys
+import os
+
+# Add the project root to sys.path for module discovery
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+
+# Import the module directly to patch its attributes
+import services.servico_produtos.api.index as api_index
 
 @pytest.fixture
 def client():
-    from api.index import app
+    from services.servico_produtos.api.index import app
     app.config['TESTING'] = True
     with app.test_client() as client:
         yield client
@@ -27,11 +35,11 @@ def mock_all_dependencies():
     # 2. Mock Kafka Producer
     mock_kafka_producer_instance = MagicMock()
 
-    # Apply all mocks using patch
-    with patch('api.index.db', MagicMock()) as mock_db, \
-         patch('api.index.auth') as mock_auth, \
-         patch('api.index.producer', mock_kafka_producer_instance), \
-         patch('api.index.publish_event') as mock_publish_event:
+    # Apply all mocks using patch.object
+    with patch.object(api_index, 'db', MagicMock()) as mock_db, \
+         patch.object(api_index, 'auth') as mock_auth, \
+         patch.object(api_index, 'producer', mock_kafka_producer_instance), \
+         patch.object(api_index, 'publish_event') as mock_publish_event:
 
         # Configure the mock for Firestore document retrieval
         mock_db.collection.return_value.document.return_value.get.return_value = mock_fs_doc
@@ -199,7 +207,7 @@ def test_health_check_all_ok(client, mock_all_dependencies):
 def test_health_check_kafka_error(client, mock_all_dependencies):
     """Test health check when Kafka producer is not initialized."""
     # Use patch to mock the module-level producer variable
-    with patch('api.index.producer', new=None):
+    with patch('services.servico_produtos.api.index.producer', new=None):
         response = client.get('/api/health')
         assert response.status_code == 503
         assert response.json["kafka_producer"] == "error"

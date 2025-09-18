@@ -263,7 +263,7 @@ def get_store(store_id):
         store_data['id'] = store_doc.id
 
         location_record = db_session.query(StoreLocation).filter_by(store_id=store_id).first()
-        if location_record and to_shape:
+        if location_record:
             point = to_shape(location_record.location)
             store_data['location'] = {'latitude': point.y, 'longitude': point.x}
 
