@@ -17,6 +17,7 @@ try:
 except ImportError:
     Producer = None
 
+
 try:
     from sqlalchemy import create_engine, Column, String, MetaData, text
     from sqlalchemy.orm import sessionmaker, declarative_base
