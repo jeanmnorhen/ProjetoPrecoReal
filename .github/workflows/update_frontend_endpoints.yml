@@ -108,7 +108,7 @@ jobs:
         run: |
           echo "Triggering a new production deployment for $FRONTEND_PROJECT_NAME..."
           # Fetch the latest production deployment URL to redeploy it
-          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --json | jq -r '.[0].url')
+          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --json --token=$VERCEL_TOKEN | jq -r '.[0].url')
           
           if [ -z "$DEPLOYMENT_URL" ] || [ "$DEPLOYMENT_URL" == "null" ]; then
             echo "Error: Could not find a production deployment for $FRONTEND_PROJECT_NAME to redeploy."
