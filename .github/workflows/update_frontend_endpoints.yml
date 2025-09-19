@@ -61,12 +61,28 @@ jobs:
             esac
             
             echo "Fetching URL for $VERCEL_PROJECT_NAME..."
-                      # Get the URL of the latest deployment with status 'Ready'
-                      NEW_URL=$(vercel ls $VERCEL_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | awk '/Ready/ && /https:\/\// {for(i=1;i<=NF;i++) if ($i ~ /^https:\/\//) {print $i; exit}}')
-            if [[ -z "$NEW_URL" ]]; then
-              echo "Error: Could not parse deployment URL for $VERCEL_PROJECT_NAME. Skipping."
+            echo "Waiting for deployment of $VERCEL_PROJECT_NAME to be ready..."
+            RETRY_COUNT=0
+            MAX_RETRIES=18 # 18 retries * 10 seconds = 3 minutes
+            LATEST_STATE=""
+            while [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; do
+              LATEST_DEPLOYMENT_JSON=$(vercel ls $VERCEL_PROJECT_NAME --prod --json --token=${{ secrets.VERCEL_TOKEN }} | jq '.deployments[0]')
+              LATEST_STATE=$(echo $LATEST_DEPLOYMENT_JSON | jq -r '.state')
+              if [[ "$LATEST_STATE" == "READY" ]]; then
+                break
+              fi
+              echo "Deployment for $VERCEL_PROJECT_NAME is in state $LATEST_STATE. Waiting 10 seconds..."
+              sleep 10
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+            done
+
+            if [[ "$LATEST_STATE" != "READY" ]]; then
+              echo "Error: Deployment for $VERCEL_PROJECT_NAME did not become ready in time. State: $LATEST_STATE"
               continue
             fi
+
+            RAW_URL=$(echo $LATEST_DEPLOYMENT_JSON | jq -r '.url')
+            NEW_URL="https://$RAW_URL"
             
             echo "Found new URL: $NEW_URL"
             vercel env rm $ENV_VAR_NAME production -y --token=${{ secrets.VERCEL_TOKEN }} || true
@@ -79,12 +95,13 @@ jobs:
         run: |
           echo "Triggering a new production deployment for $FRONTEND_PROJECT_NAME..."
           # Get the URL of the latest deployment with status 'Ready'
-          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | awk '/Ready/ && /https:\/\// {for(i=1;i<=NF;i++) if ($i ~ /^https:\/\//) {print $i; exit}}')
-          
-          if [[ -z "$DEPLOYMENT_URL" ]]; then
-            echo "Error: Could not parse deployment URL for $FRONTEND_PROJECT_NAME to redeploy."
+          RAW_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --json --token=${{ secrets.VERCEL_TOKEN }} | jq -r '[.deployments[] | select(.state == "READY")][0].url')
+
+          if [[ -z "$RAW_URL" || "$RAW_URL" == "null" ]]; then
+            echo "Error: Could not find a ready deployment URL for $FRONTEND_PROJECT_NAME to redeploy."
             exit 1
           fi
+          DEPLOYMENT_URL="https://$RAW_URL"
 
           echo "Redeploying production deployment: $DEPLOYMENT_URL"
           vercel redeploy $DEPLOYMENT_URL --target production --token=${{ secrets.VERCEL_TOKEN }}
