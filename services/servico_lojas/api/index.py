@@ -176,6 +176,7 @@ def publish_event(topic, event_type, store_id, data, changes=None):
 
 # --- Rotas da API ---
 
+# Final workflow trigger test
 @app.route('/api/stores', methods=['GET'])
 def list_all_stores():
     if not db or not db_session:
