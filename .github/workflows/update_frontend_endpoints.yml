@@ -72,7 +72,10 @@ jobs:
                             NEW_URL=$(echo "$DEPLOYMENT_LIST" | head -n 2 | tail -n 1 | awk '{print $2}')
                             break
                           fi
-                          echo "Deployment for $VERCEL_PROJECT_NAME is in state $LATEST_STATUS. Waiting 10 seconds..."
+                          echo "DEBUG: DEPLOYMENT_LIST for $VERCEL_PROJECT_NAME:"
+              echo "$DEPLOYMENT_LIST"
+              echo "DEBUG: LATEST_STATUS extracted: '$LATEST_STATUS'"
+              echo "Deployment for $VERCEL_PROJECT_NAME is in state '$LATEST_STATUS'. Waiting 10 seconds..."
                           sleep 10
                           RETRY_COUNT=$((RETRY_COUNT + 1))
                         done
