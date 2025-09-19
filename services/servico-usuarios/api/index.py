@@ -34,7 +34,7 @@ except ImportError:
 
 from flask_cors import CORS
 
-# --- Variáveis globais para erros de inicialização -- - 
+# --- Variáveis globais para erros de inicialização -- 
 firebase_init_error = None
 postgres_init_error = None
 kafka_producer_init_error = None # Renamed for clarity    
