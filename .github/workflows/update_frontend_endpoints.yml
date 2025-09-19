@@ -67,7 +67,7 @@ jobs:
                         NEW_URL=""
                         while [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; do
                           DEPLOYMENT_LIST=$(vercel ls $VERCEL_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }})
-                          LATEST_STATUS=$(echo "$DEPLOYMENT_LIST" | head -n 2 | tail -n 1 | awk '{print $4}')
+                          LATEST_STATUS=$(echo "$DEPLOYMENT_LIST" | head -n 2 | tail -n 1 | sed 's/●//g' | awk '{print $3}')
                           if [[ "$LATEST_STATUS" == "Ready" ]]; then
                             NEW_URL=$(echo "$DEPLOYMENT_LIST" | head -n 2 | tail -n 1 | awk '{print $2}')
                             break
@@ -92,7 +92,7 @@ jobs:
         run: |
           echo "Triggering a new production deployment for $FRONTEND_PROJECT_NAME..."
           # Get the URL of the latest deployment with status 'Ready'
-          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | grep 'Ready' | head -n 1 | awk '{print $2}')
+          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | sed 's/●//g' | grep 'Ready' | head -n 1 | awk '{print $2}')
           
           if [[ -z "$DEPLOYMENT_URL" ]]; then
             echo "Error: Could not parse deployment URL for $FRONTEND_PROJECT_NAME to redeploy."
