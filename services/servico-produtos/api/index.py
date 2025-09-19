@@ -13,6 +13,7 @@ app = Flask(__name__)
 CORS(app)
 
 # --- Variáveis globais para erros  de inicialização ---
+
 firebase_init_error = None
 kafka_producer_init_error = None
 
