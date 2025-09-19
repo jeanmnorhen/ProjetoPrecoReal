@@ -1,0 +1,61 @@
+name: 'Deploy Vercel Microservice'
+description: 'Deploys a Vercel microservice if changes are detected in its directory.'
+inputs:
+  service_path:
+    description: 'The path to the microservice directory (e.g., services/servico-usuarios)'
+    required: true
+  vercel_project_name:
+    description: 'The Vercel project name for the microservice'
+    required: true
+  vercel_org_id:
+    description: 'The Vercel Organization ID'
+    required: true
+  vercel_token:
+    description: 'The Vercel API Token'
+    required: true
+outputs:
+  url:
+    description: 'The URL of the deployed microservice (if deployed)'
+    value: ${{ steps.deploy.outputs.url }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Check for changes in ${{ inputs.service_path }}
+      id: check_changes
+      shell: bash
+      run: |
+        if git diff --quiet HEAD^ HEAD -- ${{ inputs.service_path }}; then
+          echo "No changes detected in ${{ inputs.service_path }}. Skipping deployment."
+          echo "should_deploy=false" >> $GITHUB_OUTPUT
+        else
+          echo "Changes detected in ${{ inputs.service_path }}. Proceeding with deployment."
+          echo "should_deploy=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Deploy ${{ inputs.vercel_project_name }} to Vercel
+      id: deploy
+      if: steps.check_changes.outputs.should_deploy == 'true'
+      shell: bash
+      run: |
+        echo "Navigating to ${{ inputs.service_path }}"
+        cd ${{ inputs.service_path }}
+        
+        echo "Running Vercel deploy for ${{ inputs.vercel_project_name }}..."
+        DEPLOY_OUTPUT=$(vercel deploy --prebuilt --prod --token ${{ inputs.vercel_token }} --scope ${{ inputs.vercel_org_id }} --project ${{ inputs.vercel_project_name }} --confirm 2>&1)
+        
+        echo "$DEPLOY_OUTPUT"
+        
+        # Extrai a URL do deploy da saída
+        DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep -o 'https://[a-zA-Z0-9.-]*\.vercel\.app' | tail -n 1)
+        
+        if [ -z "$DEPLOY_URL" ]; then
+          echo "Erro: Não foi possível extrair a URL de deploy da saída da Vercel."
+          exit 1
+        fi
+        
+        echo "Deployed URL: $DEPLOY_URL"
+        echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
+      env:
+        VERCEL_ORG_ID: ${{ inputs.vercel_org_id }}
+        VERCEL_PROJECT_ID: ${{ inputs.vercel_project_name }}
+        VERCEL_TOKEN: ${{ inputs.vercel_token }}
