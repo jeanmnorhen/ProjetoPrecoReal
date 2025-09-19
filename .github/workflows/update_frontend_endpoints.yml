@@ -3,7 +3,7 @@ name: Update Frontend Endpoints on Backend Deploy
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - 'services/**'
 
