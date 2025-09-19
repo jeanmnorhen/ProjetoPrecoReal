@@ -109,4 +109,12 @@ jobs:
           fi
 
           echo "Redeploying production deployment: $DEPLOYMENT_URL"
-          vercel redeploy $DEPLOYMENT_URL --target production --token=${{ secrets.VERCEL_TOKEN }}
+          REDEPLOY_OUTPUT=$(vercel redeploy $DEPLOYMENT_URL --target production --token=${{ secrets.VERCEL_TOKEN }} 2>&1)
+          REDEPLOY_EXIT_CODE=$?
+          echo "DEBUG: Redeploy output:"
+          echo "$REDEPLOY_OUTPUT"
+          echo "DEBUG: Redeploy exit code: $REDEPLOY_EXIT_CODE"
+          if [[ $REDEPLOY_EXIT_CODE -ne 0 ]]; then
+            echo "Error: Vercel redeploy command failed."
+            exit 1
+          fi
