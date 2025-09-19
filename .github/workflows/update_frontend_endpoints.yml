@@ -62,7 +62,7 @@ jobs:
             
             echo "Fetching URL for $VERCEL_PROJECT_NAME..."
                       # Get the URL of the latest deployment with status 'Ready'
-                      NEW_URL=$(vercel ls $VERCEL_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | awk '/Ready/ {print $2; exit}')
+                      NEW_URL=$(vercel ls $VERCEL_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | awk '/Ready/ && /https:\/\// {for(i=1;i<=NF;i++) if ($i ~ /^https:\/\//) {print $i; exit}}')
             if [[ -z "$NEW_URL" ]]; then
               echo "Error: Could not parse deployment URL for $VERCEL_PROJECT_NAME. Skipping."
               continue
@@ -79,7 +79,7 @@ jobs:
         run: |
           echo "Triggering a new production deployment for $FRONTEND_PROJECT_NAME..."
           # Get the URL of the latest deployment with status 'Ready'
-          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | awk '/Ready/ {print $2; exit}')
+          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | awk '/Ready/ && /https:\/\// {for(i=1;i<=NF;i++) if ($i ~ /^https:\/\//) {print $i; exit}}')
           
           if [[ -z "$DEPLOYMENT_URL" ]]; then
             echo "Error: Could not parse deployment URL for $FRONTEND_PROJECT_NAME to redeploy."
