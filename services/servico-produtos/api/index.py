@@ -16,7 +16,7 @@ CORS(app)
 firebase_init_error = None
 kafka_producer_init_error = None
 
-# --- Inicialização do  Firebase Admin  SDK ---
+# --- Inicialização do Firebase Admin  SDK ---
 # Tenta carregar as credenciais a partir da variável Base64
 firebase_sdk_cred_base64 = os.environ.get('FIREBASE_ADMIN_SDK_BASE64')
 db = None
