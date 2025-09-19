@@ -61,10 +61,13 @@ IMPORTANTE! O ciclo de desenvolvimento para cada nova funcionalidade seguirá es
     4.  Integrar o front-end com o `servico-busca` para a funcionalidade de pesquisa.
 
 ### Fase 3: Microsserviço de Agentes de IA
-*   **Objetivo:** Isolar a lógica de IA em seu próprio serviço assíncrono.
+*   **Objetivo:** Isolar a lógica de IA em seu próprio serviço assíncrono e expandir as capacidades de IA.
 *   **Passos:**
-    1.  Definir schemas para os tópicos `tarefas_ia` e `resultados_ia`.
-    2.  **TDD:** Implementar os diversos agentes (Busca de Lojas, Busca de Produtos, Categorização, Análise de Imagem) dentro do `servico-agentes-ia`.
+    1.  Definir schemas para os tópicos `tarefas_ia` e `resultados_ia`. (Concluído para Análise de Imagem)
+    2.  **TDD:** Implementar os diversos agentes dentro do `servico-agentes-ia`:
+        *   **Análise de Imagem:** Identificação de produtos a partir de imagens. (Concluído)
+        *   **Busca de Produtos em Lojas:** Agente especialista para buscar produtos na internet a partir de texto e URLs de lojas.
+        *   **Categorização de Produtos:** Agente para categorizar automaticamente produtos usando `google-generativeai`.
     3.  Implantar e integrar com os demais serviços que dependem de resultados de IA.
 
 ### Fase 4: Microsserviço de Monitoramento e Analytics
@@ -82,11 +85,24 @@ IMPORTANTE! O ciclo de desenvolvimento para cada nova funcionalidade seguirá es
     3.  Descomissionar gradualmente o backend monolítico antigo.
     4.  Realizar o lançamento oficial da nova arquitetura.
 
-## 5. Próximos Passos
+### Fase 6: Aprimoramentos do Frontend e Experiência do Usuário
+*   **Objetivo:** Melhorar a interface do usuário e implementar funcionalidades avançadas para o consumidor e lojista.
+*   **Passos:**
+    1.  Implementar feeds de ofertas dinâmicos e infinitos, separados por tipo (Promoções, Promoções Relâmpago, Ofertas).
+    2.  Desenvolver a interface de usuário para filtragem de ofertas por categoria (botões).
+    3.  Implementar opções de ordenação de ofertas por "Proximidade" e "Preço" (ascendente/descendente).
+    4.  Desenvolver a lógica e UI para "Verificação e Sugestão para Catálogo" (frontend para sugestões de produtos via análise de imagem).
+    5.  Criar um painel administrativo dedicado para o lojista, incluindo gerenciamento de "vitrine virtual" e "anúncios ativos".
+    6.  Integrar um gráfico de tendência de preços (ex: Recharts) na página de monitoramento do administrador.
+    7.  Implementar a exibição condicional de links de Admin na Navbar.
 
-- [ ] Iniciar a **Fase 0** com a configuração dos serviços de Kafka e Firestore.
-- [ ] Iniciar a **Fase 0** com a criação e deploy do `servico-healthcheck`.
-- [ ] Iniciar a **Fase 0** com a **configuração e integração do PostgreSQL + PostGIS** para dados geoespaciais.
+### Fase 7: Gerenciamento Avançado do Catálogo Canônico (Admin)
+*   **Objetivo:** Fornecer ferramentas robustas para o administrador gerenciar o catálogo de produtos canônicos.
+*   **Passos:**
+    1.  Desenvolver a interface de usuário para "Revisão de Sugestões de Produtos" (tabela de termos sugeridos com status e ações).
+    2.  Implementar a lógica de "Rejeitar" sugestões, incluindo a exclusão automática de novas sugestões de termos já rejeitados.
+    3.  Desenvolver o workflow de aprovação de produtos sugeridos para torná-los canônicos.
+    4.  Integrar o "Agente Especialista em Categorização de Produtos" no fluxo de aprovação de produtos canônicos.
 
 ---
 

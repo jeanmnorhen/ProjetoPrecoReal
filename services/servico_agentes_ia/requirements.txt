@@ -3,3 +3,4 @@ confluent-kafka
 google-generativeai
 Flask-Cors
 Pillow
+firebase-admin
