@@ -61,9 +61,8 @@ jobs:
             esac
             
             echo "Fetching URL for $VERCEL_PROJECT_NAME..."
-            # Get the second line of the output, then the second word of that line.
-            NEW_URL=$(vercel ls $VERCEL_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | sed -n '2p' | awk '{print $2}')
-
+                      # Get the URL of the latest deployment with status 'Ready'
+                      NEW_URL=$(vercel ls $VERCEL_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | awk '/Ready/ {print $2; exit}')
             if [[ -z "$NEW_URL" ]]; then
               echo "Error: Could not parse deployment URL for $VERCEL_PROJECT_NAME. Skipping."
               continue
@@ -79,8 +78,8 @@ jobs:
         if: steps.changed_services.outputs.services
         run: |
           echo "Triggering a new production deployment for $FRONTEND_PROJECT_NAME..."
-          # Get the second line of the output, then the second word of that line.
-          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | sed -n '2p' | awk '{print $2}')
+          # Get the URL of the latest deployment with status 'Ready'
+          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | awk '/Ready/ {print $2; exit}')
           
           if [[ -z "$DEPLOYMENT_URL" ]]; then
             echo "Error: Could not parse deployment URL for $FRONTEND_PROJECT_NAME to redeploy."
