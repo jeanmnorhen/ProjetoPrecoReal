@@ -100,9 +100,7 @@ jobs:
           echo "$FRONTEND_DEPLOYMENT_LIST"
           
           # Get the URL of the latest deployment with status 'Ready'
-          FRONTEND_READY_LINE=$(echo "$FRONTEND_DEPLOYMENT_LIST" | grep 'Ready' | head -n 1)
-          echo "DEBUG: FRONTEND_READY_LINE: '$FRONTEND_READY_LINE'"
-          DEPLOYMENT_URL=$(echo "$FRONTEND_READY_LINE" | sed 's/●//g' | cut -d' ' -f2)
+          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | awk '/https:\/\// {print $2; exit}')
           echo "DEBUG: DEPLOYMENT_URL extracted: '$DEPLOYMENT_URL'"
 
           if [[ -z "$DEPLOYMENT_URL" ]]; then
