@@ -107,4 +107,4 @@ jobs:
         if: steps.changed_services.outputs.services
         run: |
           echo "Triggering a new production deployment for $FRONTEND_PROJECT_NAME..."
-          vercel redeploy --prod --yes --token=$VERCEL_TOKEN --token=$VERCEL_TOKEN
+          vercel redeploy $(vercel ls $FRONTEND_PROJECT_NAME --prod --json | jq -r '.[0].id') --yes --token=$VERCEL_TOKEN
