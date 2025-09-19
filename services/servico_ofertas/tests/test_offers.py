@@ -11,32 +11,31 @@ def client():
         yield client
 
 @pytest.fixture(autouse=True)
+def mock_env_vars():
+    with patch.dict(os.environ, {
+        "FIREBASE_ADMIN_SDK_BASE64": "dummy_base64",
+        "KAFKA_BOOTSTRAP_SERVER": "dummy_kafka_server",
+        "KAFKA_API_KEY": "dummy_kafka_key",
+        "KAFKA_API_SECRET": "dummy_kafka_secret",
+    }):
+        yield
+
+@pytest.fixture(autouse=True)
 def mock_all_dependencies():
     # 1. Mock Firebase
-    mock_fs_doc = MagicMock()
-    mock_fs_doc.exists = True
-    mock_fs_doc.id = "test_offer_id"
-    mock_fs_doc.to_dict.return_value = {
-        'product_id': 'test_product_id',
-        'offer_price': 79.99,
-        'store_id': 'test_store_id',
-        'owner_uid': 'test_owner_uid',
-        'created_at': datetime.now(timezone.utc),
-        'updated_at': datetime.now(timezone.utc)
-    }
-
+    # mock_fs_doc will be configured in individual tests or specific fixtures
+    
     # 2. Mock Kafka Producer
     mock_kafka_producer_instance = MagicMock()
 
-    # Apply all mocks using patch
-    with patch('api.index.db', MagicMock()) as mock_db, \
-         patch('api.index.auth') as mock_auth, \
-         patch('api.index.producer', mock_kafka_producer_instance), \
-         patch('api.index.publish_event') as mock_publish_event:
+    # Apply all mocks using patch.object for global dependencies
+    with patch.object(api_index, 'db', MagicMock()) as mock_db, \
+         patch.object(api_index, 'auth') as mock_auth, \
+         patch.object(api_index, 'producer', mock_kafka_producer_instance), \
+         patch.object(api_index, 'publish_event') as mock_publish_event, \
+         patch.object(api_index, 'firebase_init_error', None), \
+         patch.object(api_index, 'kafka_producer_init_error', None):
 
-        # Configure the mock for Firestore document retrieval
-        mock_db.collection.return_value.document.return_value.get.return_value = mock_fs_doc
-        
         yield {
             "db": mock_db,
             "auth": mock_auth,
@@ -114,6 +113,20 @@ def test_create_offer_success(client, mock_all_dependencies):
 
 def test_get_offer_success(client, mock_all_dependencies):
     """Testa a recuperação de uma oferta existente."""
+    mock_db = mock_all_dependencies["db"]
+    mock_fs_doc = MagicMock()
+    mock_fs_doc.exists = True
+    mock_fs_doc.id = "test_offer_id"
+    mock_fs_doc.to_dict.return_value = {
+        'product_id': 'test_product_id',
+        'offer_price': 79.99,
+        'store_id': 'test_store_id',
+        'owner_uid': 'test_owner_uid',
+        'created_at': datetime.now(timezone.utc),
+        'updated_at': datetime.now(timezone.utc)
+    }
+    mock_db.collection.return_value.document.return_value.get.return_value = mock_fs_doc
+
     response = client.get('/api/offers/test_offer_id')
 
     assert response.status_code == 200
@@ -133,6 +146,20 @@ def test_update_offer_success(client, mock_all_dependencies):
     headers = {"Authorization": f"Bearer {fake_token}"}
     
     mock_all_dependencies["auth"].verify_id_token.return_value = {'uid': user_uid}
+
+    mock_db = mock_all_dependencies["db"]
+    mock_fs_doc = MagicMock()
+    mock_fs_doc.exists = True
+    mock_fs_doc.id = "test_offer_id"
+    mock_fs_doc.to_dict.return_value = {
+        'product_id': 'test_product_id',
+        'offer_price': 79.99,
+        'store_id': 'test_store_id',
+        'owner_uid': 'test_owner_uid',
+        'created_at': datetime.now(timezone.utc),
+        'updated_at': datetime.now(timezone.utc)
+    }
+    mock_db.collection.return_value.document.return_value.get.return_value = mock_fs_doc
 
     update_data = {"offer_price": 69.99}
     response = client.put('/api/offers/test_offer_id', headers=headers, json=update_data)
@@ -170,6 +197,20 @@ def test_delete_offer_success(client, mock_all_dependencies):
     
     mock_all_dependencies["auth"].verify_id_token.return_value = {'uid': user_uid}
 
+    mock_db = mock_all_dependencies["db"]
+    mock_fs_doc = MagicMock()
+    mock_fs_doc.exists = True
+    mock_fs_doc.id = "test_offer_id"
+    mock_fs_doc.to_dict.return_value = {
+        'product_id': 'test_product_id',
+        'offer_price': 79.99,
+        'store_id': 'test_store_id',
+        'owner_uid': 'test_owner_uid',
+        'created_at': datetime.now(timezone.utc),
+        'updated_at': datetime.now(timezone.utc)
+    }
+    mock_db.collection.return_value.document.return_value.get.return_value = mock_fs_doc
+
     response = client.delete('/api/offers/test_offer_id', headers=headers)
 
     assert response.status_code == 204
@@ -197,8 +238,20 @@ def test_health_check_all_ok(client, mock_all_dependencies):
     response = client.get('/api/health')
     assert response.status_code == 200
     assert response.json == {
-        "firestore": "ok",
-        "kafka_producer": "ok"
+        "environment_variables": {
+            "FIREBASE_ADMIN_SDK_BASE64": "present",
+            "KAFKA_BOOTSTRAP_SERVER": "present",
+            "KAFKA_API_KEY": "present",
+            "KAFKA_API_SECRET": "present"
+        },
+        "dependencies": {
+            "firestore": "ok",
+            "kafka_producer": "ok"
+        },
+        "initialization_errors": {
+            "firestore": None,
+            "kafka_producer": None
+        }
     }
 
 def test_health_check_kafka_error(client, mock_all_dependencies):
@@ -206,4 +259,5 @@ def test_health_check_kafka_error(client, mock_all_dependencies):
     with patch('api.index.producer', new=None):
         response = client.get('/api/health')
         assert response.status_code == 503
-        assert response.json["kafka_producer"] == "error"
+        assert response.json["dependencies"]["kafka_producer"] == "error"
+        assert response.json["initialization_errors"]["kafka_producer"] is not None

@@ -1,5 +1,6 @@
 Flask
 pytest
+pytest-mock
 firebase-admin
 confluent-kafka
 Flask-Cors

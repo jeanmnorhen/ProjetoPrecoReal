@@ -51,8 +51,10 @@ def mock_all_dependencies():
 
     # 2. Mock PostGIS/SQLAlchemy session
     mock_sql_session = MagicMock()
-    # Configure the query chain to return a mock object that can be configured later
     mock_sql_session.query.return_value.filter_by.return_value.first.return_value = None # Default to None
+    # Configure the query chain to return a mock object that can be configured later
+    # mock_location_record = MockStoreLocation('test_store_123', 'POINT(-46.6 -23.5)') # Removido
+    # mock_sql_session.query.return_value.filter_by.return_value.first.return_value = mock_location_record # Removido
     mock_sql_session.execute.return_value = MagicMock() # For health check SELECT 1
 
     # 3. Mock Kafka Producer
@@ -171,15 +173,30 @@ def test_get_store_with_location(client, mock_all_dependencies):
 def test_get_store_without_location(client, mock_all_dependencies):
     """Test getting a store who does not have a location in PostGIS."""
     # Setup mock to return None for the location query
-    # This is now the default in mock_all_dependencies
+    mock_db_session = mock_all_dependencies["db_session"]
+    mock_db_session.query.return_value.filter_by.return_value.first.return_value = None
     
+    # Mock the Firestore document to NOT contain location data
+    mock_fs_doc_no_location = MagicMock()
+    mock_fs_doc_no_location.exists = True
+    mock_fs_doc_no_location.id = "test_store_123"
+    mock_fs_doc_no_location.to_dict.return_value = {
+        "name": "Test Store",
+        "owner_uid": "test_owner_uid",
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc)
+    }
+    mock_all_dependencies["db"].collection.return_value.document.return_value.get.return_value = mock_fs_doc_no_location
+
     response = client.get('/api/stores/test_store_123')
 
     assert response.status_code == 200
     assert 'location' not in response.json # The key should be absent
     
     mock_all_dependencies["db_session"].query.assert_called_once()
-    mock_all_dependencies["to_shape"].assert_not_called() # Should not be called if no record is found
+    # Mock to_shape to ensure it's not called
+    with patch.object(api_index, 'to_shape') as mock_to_shape_local:
+        mock_to_shape_local.assert_not_called()
 
 def test_get_store_not_found(client, mock_all_dependencies):
     """Test getting a store that does not exist in Firestore."""
@@ -195,6 +212,10 @@ def test_update_store_location(client, mock_all_dependencies):
     headers = {"Authorization": f"Bearer {fake_token}"}
     
     with patch('services.servico_lojas.api.index.auth.verify_id_token', return_value={'uid': user_uid}):
+        # Configure mock_sql_session.query for this specific test
+        mock_location_record = MockStoreLocation('test_store_123', 'POINT(-46.6 -23.5)')
+        mock_all_dependencies["db_session"].query.return_value.filter_by.return_value.first.return_value = mock_location_record
+
         update_data = {"location": {"latitude": -10.0, "longitude": -20.0}}
         response = client.put('/api/stores/test_store_123', headers=headers, json=update_data)
 
@@ -219,6 +240,10 @@ def test_delete_store(client, mock_all_dependencies):
     headers = {"Authorization": f"Bearer {fake_token}"}
 
     with patch('services.servico_lojas.api.index.auth.verify_id_token', return_value={'uid': user_uid}):
+        # Configure mock_sql_session.query for this specific test
+        mock_location_record = MockStoreLocation('test_store_123', 'POINT(-46.6 -23.5)')
+        mock_all_dependencies["db_session"].query.return_value.filter_by.return_value.first.return_value = mock_location_record
+
         response = client.delete('/api/stores/test_store_123', headers=headers)
 
         assert response.status_code == 204

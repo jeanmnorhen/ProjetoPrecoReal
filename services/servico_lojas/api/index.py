@@ -263,7 +263,9 @@ def get_store(store_id):
         store_data['id'] = store_doc.id
 
         location_record = db_session.query(StoreLocation).filter_by(store_id=store_id).first()
+        print(f"DEBUG: location_record in get_store: {location_record}") # Depuração
         if location_record:
+            print("DEBUG: Inside if location_record block") # Depuração
             point = to_shape(location_record.location)
             store_data['location'] = {'latitude': point.y, 'longitude': point.x}
 

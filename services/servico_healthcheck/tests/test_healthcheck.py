@@ -2,7 +2,14 @@ import pytest
 import unittest.mock as mock
 import os
 import requests
-from services.servico_healthcheck.api.index import app, SERVICES_TO_MONITOR
+import sys
+import os
+# Adiciona o diretório raiz do serviço ao sys.path
+service_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if service_root not in sys.path:
+    sys.path.insert(0, service_root)
+
+from api.index import app, SERVICES_TO_MONITOR
 
 @pytest.fixture
 def client():
@@ -41,8 +48,8 @@ def test_health_check_all_services_ok(client):
         for service_name in SERVICES_TO_MONITOR.keys():
             assert response.json['services'][service_name]['status'] == 'ok'
             # Check that requests.get was called for each service
-            assert any(service_name in str(call.args[0]) for call in mock_get.call_args_list)
-
+            expected_url = os.environ.get(SERVICES_TO_MONITOR[service_name]) + "/api/health"
+            assert any(expected_url == call.args[0] for call in mock_get.call_args_list)
 def test_health_check_some_services_degraded(client):
     with mock.patch('services.servico_healthcheck.api.index.requests.get') as mock_get:
         # Configure mock_get to simulate some services being down

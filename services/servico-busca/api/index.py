@@ -136,6 +136,7 @@ def reindex():
 
 @app.route('/api/search/consume', methods=['POST', 'GET'])
 def consume_events():
+    print("DEBUG: consume_events called") # Depuração
     # 1. Segurança: Protege o endpoint com um token secreto
     auth_header = request.headers.get('Authorization')
     cron_secret = os.environ.get('CRON_SECRET')
@@ -149,33 +150,47 @@ def consume_events():
     messages_processed = 0
     try:
         msgs = kafka_consumer_instance.consume(num_messages=20, timeout=5.0) # Consome até 20 mensagens ou por 5 segundos
+        print(f"DEBUG: msgs from kafka_consumer_instance.consume: {msgs}") # Depuração
         if not msgs:
             return jsonify({"status": "No new messages to process"}), 200
 
         for msg in msgs:
+            print(f"DEBUG: Processing msg: {msg}") # Depuração
             if msg.error():
                 print(f"Kafka error: {msg.error()}")
                 continue
             
             event_data = json.loads(msg.value().decode('utf-8'))
+            print(f"DEBUG: event_data: {event_data}") # Depuração
             topic = msg.topic()
             index_name = topic.split('_')[1]
             
             # Extrai o ID e os dados do evento
-            doc_id = event_data.get(f"{index_name[:-1]}_id") # ex: user_id, product_id
+            id_key_map = {
+                "usuarios": "user_id",
+                "produtos": "product_id",
+                "lojas": "store_id",
+                "ofertas": "offer_id"
+            }
+            id_key = id_key_map.get(index_name)
+            doc_id = event_data.get(id_key)
             data_to_index = event_data.get('data', {})
+            print(f"DEBUG: doc_id: {doc_id}, data_to_index: {data_to_index}") # Depuração
 
             if doc_id and data_to_index:
                 es.index(index=index_name, id=doc_id, document=data_to_index)
                 messages_processed += 1
+                print(f"DEBUG: messages_processed: {messages_processed}") # Depuração
 
     except Exception as e:
+        print(f"DEBUG: Exception in consume_events: {e}") # Depuração
         return jsonify({"error": f"Erro durante o consumo de eventos: {e}"}), 500
     finally:
         # O consumidor não deve ser fechado aqui se for uma instância global
         # kafka_consumer_instance.close() # Removido
         pass
 
+    print(f"DEBUG: Final messages_processed: {messages_processed}") # Depuração
     return jsonify({"status": "ok", "messages_processed": messages_processed}), 200
 
 def get_health_status():

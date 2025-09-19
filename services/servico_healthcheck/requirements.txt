@@ -1,4 +1,5 @@
 Flask
 pytest
+pytest-mock
 Flask-Cors
 requests
