@@ -67,8 +67,7 @@ jobs:
             esac
             
             echo "Fetching URL for $VERCEL_PROJECT_NAME..."
-            # Robustly parse the text table to find the first 'Ready' production deployment URL
-            NEW_URL=$(vercel ls $VERCEL_PROJECT_NAME --prod --token=$VERCEL_TOKEN | awk '/Ready/ {print $4; exit}')
+            NEW_URL=$(vercel ls $VERCEL_PROJECT_NAME --prod --token=$VERCEL_TOKEN | awk '/Ready/ {print $2; exit}')
 
             if [[ -z "$NEW_URL" ]]; then
               echo "Error: Could not find a 'Ready' production deployment URL for $VERCEL_PROJECT_NAME. Skipping."
@@ -88,7 +87,7 @@ jobs:
         run: |
           echo "Triggering a new production deployment for $FRONTEND_PROJECT_NAME..."
           # Robustly parse the text table to find the first 'Ready' production deployment URL
-          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=$VERCEL_TOKEN | awk '/Ready/ {print $4; exit}')
+          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=$VERCEL_TOKEN | awk '/Ready/ {print $2; exit}')
           
           if [[ -z "$DEPLOYMENT_URL" ]]; then
             echo "Error: Could not find a 'Ready' production deployment for $FRONTEND_PROJECT_NAME to redeploy."
