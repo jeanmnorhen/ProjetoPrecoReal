@@ -15,7 +15,7 @@ A metodologia de desenvolvimento adotada será **Test-Driven Development (TDD)**
 - **Microsserviços (Python/Flask):** Serviços independentes por domínio de negócio, containerizados e implantados como funções serverless na Vercel. Incluirão: `servico-usuarios`, `servico-lojas`, `servico-produtos`, `servico-ofertas`, `servico-busca`, `servico-agentes-ia`, e `servico-monitoramento`.
 - **Persistência de Dados (Estratégia Poliglota):**
     - Google Firestore: Banco de dados para dados transacionais (OLTP) específicos que se beneficiem de sua natureza serverless e escalabilidade horizontal.
-    - PostgreSQL + PostGIS: Banco de dados relacional para dados geoespaciais complexos, como localização de lojas e usuários para consultas de proximidade avançadas, e também para dados transacionais (OLTP) de serviços como `servico-usuarios`.
+    - PostgreSQL + PostGIS: Banco de dados relacional para dados geoespaciais complexos, como localização de lojas e usuários para consultas de proximidade avançadas, e também para dados transacionais (OLTP) de serviços como `servico-usuarios` e `servico-produtos`.
     - **OpenSearch/Elasticsearch:** Motor de busca dedicado para alimentar a funcionalidade de busca textual em tempo real, garantindo performance e relevância.
     - **TimescaleDB/InfluxDB:** Banco de dados de série temporal para armazenar o histórico de preços, permitindo consultas analíticas (OLAP) eficientes para o dashboard do administrador.
 - **Agentes de IA (google-generativeai):** Encapsulados no `servico-agentes-ia`, consumirão tarefas do Kafka e publicarão resultados em tópicos de resposta.
