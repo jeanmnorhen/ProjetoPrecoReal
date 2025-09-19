@@ -36,4 +36,4 @@ Thumbs.db
 documentacao/
 .gemini/
 gha-creds-*.json
-".env" 
+.env

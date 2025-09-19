@@ -180,6 +180,7 @@ def publish_event(topic, event_type, user_id, data, changes=None):
 
 @app.route('/users', methods=['POST'])
 def create_user():
+    # Teste de workflow
     if not db or not db_session:
         return jsonify({"error": "Dependências de banco de dados não inicializadas.", "health": get_health_status()}), 503
 
