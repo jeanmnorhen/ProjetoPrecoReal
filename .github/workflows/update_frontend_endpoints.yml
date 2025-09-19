@@ -67,7 +67,7 @@ jobs:
                         NEW_URL=""
                         while [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; do
                           DEPLOYMENT_LIST=$(vercel ls $VERCEL_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }})
-                          LATEST_STATUS=$(echo "$DEPLOYMENT_LIST" | head -n 2 | tail -n 1 | sed 's/●//g' | awk '{print $3}')
+                          LATEST_STATUS=$(echo "$DEPLOYMENT_LIST" | head -n 2 | tail -n 1 | sed 's/●//g' | grep -o 'Ready')
                           if [[ "$LATEST_STATUS" == "Ready" ]]; then
                             NEW_URL=$(echo "$DEPLOYMENT_LIST" | head -n 2 | tail -n 1 | awk '{print $2}')
                             break
