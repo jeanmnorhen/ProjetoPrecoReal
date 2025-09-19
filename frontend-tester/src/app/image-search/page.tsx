@@ -67,8 +67,14 @@ export default function ImageSearchPage() {
       try {
         // For simplicity, we're calling the consume endpoint directly.
         // In a real app, this would be an API Gateway endpoint that triggers the Kafka event.
-        "authorization": `Bearer ${idToken}`, // Adiciona o cabeçalho de autorização
-
+        fetch("https://servicoagentes-1ymihk5kc-jeanmnorhens-projects.vercel.app/api/agents/consume", {
+          method: "POST",
+          headers: {
+            "accept": "*/*",
+            "accept-language": "pt-BR,pt;q=0.9,en;q=0.8",
+            "content-type": "application/json",
+            "authorization": `Bearer ${idToken}`, // Adiciona o cabeçalho de autorização
+          },
           body: JSON.stringify({
             task_type: "image_analysis",
             task_id: `image-task-${Date.now()}`,
