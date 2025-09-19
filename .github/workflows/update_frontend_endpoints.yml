@@ -100,7 +100,9 @@ jobs:
           echo "$FRONTEND_DEPLOYMENT_LIST"
           
           # Get the URL of the latest deployment with status 'Ready'
-          DEPLOYMENT_URL=$(echo "$FRONTEND_DEPLOYMENT_LIST" | sed 's/●//g' | grep 'Ready' | head -n 1 | sed -n 's/.*\(https:\/\/[^ ]*\).*\/\1\/p')
+          FRONTEND_READY_LINE=$(echo "$FRONTEND_DEPLOYMENT_LIST" | sed 's/●//g' | grep 'Ready' | head -n 1)
+          echo "DEBUG: FRONTEND_READY_LINE: '$FRONTEND_READY_LINE'"
+          DEPLOYMENT_URL=$(echo "$FRONTEND_READY_LINE" | sed -n 's/.*\(https:\/\/[^ ]*\).*\/\1\/p')
           echo "DEBUG: DEPLOYMENT_URL extracted: '$DEPLOYMENT_URL'"
 
           if [[ -z "$DEPLOYMENT_URL" ]]; then
