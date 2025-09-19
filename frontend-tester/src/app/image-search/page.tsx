@@ -1,7 +1,8 @@
 // frontend-tester/src/app/image-search/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "../../context/AuthContext"; // Ajuste o caminho conforme necessário
 import { useAuth } from "../../context/AuthContext";
 import AuthForm from "../../components/AuthForm";
 
@@ -15,7 +16,15 @@ export default function ImageSearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const { idToken } = useAuth();
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!idToken) {
+      console.error("No authentication token found. Please log in.");
+      setError("No authentication token found. Please log in.");
+      return;
+    }
+
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setImage(file);
@@ -58,14 +67,8 @@ export default function ImageSearchPage() {
       try {
         // For simplicity, we're calling the consume endpoint directly.
         // In a real app, this would be an API Gateway endpoint that triggers the Kafka event.
-        const response = await fetch(`${AI_API_URL}/api/agents/consume`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            // Authorization header is needed if the consume endpoint is protected
-            // "Authorization": `Bearer ${idToken}`,
-            // For now, assuming the consume endpoint is called by cron and doesn't need user token
-          },
+        "authorization": `Bearer ${idToken}`, // Adiciona o cabeçalho de autorização
+
           body: JSON.stringify({
             task_type: "image_analysis",
             task_id: `image-task-${Date.now()}`,
