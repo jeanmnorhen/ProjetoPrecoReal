@@ -4,3 +4,5 @@ pytest-mock
 firebase-admin
 confluent-kafka
 Flask-Cors
+Flask-SQLAlchemy
+psycopg2-binary
