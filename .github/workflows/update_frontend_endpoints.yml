@@ -52,55 +52,34 @@ jobs:
         run: |
           for SERVICE_DIR in ${{ steps.changed_services.outputs.services }}; do
             echo "Processing service: $SERVICE_DIR"
-
-            # Mapeia o nome do diretório para o nome do projeto na Vercel e para a variável de ambiente
-            # IMPORTANTE: Assumindo que o nome do projeto na Vercel é igual ao nome do diretório.
-            # Se forem diferentes, ajuste aqui.
             VERCEL_PROJECT_NAME=$SERVICE_DIR
             ENV_VAR_NAME=""
-
             case $SERVICE_DIR in
               "servico-agentes-ia") ENV_VAR_NAME="NEXT_PUBLIC_AI_API_URL" ;;
               "servico-busca") ENV_VAR_NAME="NEXT_PUBLIC_SEARCH_API_URL" ;;
-              "servico-healthcheck") continue ;; # O healthcheck não precisa de variável
+              "servico-healthcheck") continue ;;
               "servico-lojas") ENV_VAR_NAME="NEXT_PUBLIC_STORES_API_URL" ;;
               "servico-monitoramento") ENV_VAR_NAME="NEXT_PUBLIC_MONITORING_API_URL" ;;
               "servico-ofertas") ENV_VAR_NAME="NEXT_PUBLIC_OFFERS_API_URL" ;;
               "servico-produtos") ENV_VAR_NAME="NEXT_PUBLIC_PRODUCTS_API_URL" ;;
               "servico-usuarios") ENV_VAR_NAME="NEXT_PUBLIC_USERS_API_URL" ;;
-              *)
-                echo "Warning: No environment variable mapping found for $SERVICE_DIR. Skipping."
-                continue
-                ;;
+              *) echo "Warning: No mapping for $SERVICE_DIR." && continue ;;
             esac
             
-            echo "Mapping: $SERVICE_DIR -> $VERCEL_PROJECT_NAME -> $ENV_VAR_NAME"
+            echo "Fetching URL for $VERCEL_PROJECT_NAME..."
+            # Robustly parse the text table to find the first 'Ready' production deployment URL
+            NEW_URL=$(vercel ls $VERCEL_PROJECT_NAME --prod --token=$VERCEL_TOKEN | awk '/Ready/ {print $4; exit}')
 
-            # Busca a URL de produção mais recente para o serviço
-            # A Vercel já terá feito o deploy do backend devido à integração com o Git
-            echo "Fetching latest production URL for $VERCEL_PROJECT_NAME..."
-            NEW_URL=$(vercel ls $VERCEL_PROJECT_NAME --prod --json | jq -r '[0].url')
-
-            if [ -z "$NEW_URL" ] || [ "$NEW_URL" == "null" ]; then
-              echo "Error: Could not retrieve production URL for $VERCEL_PROJECT_NAME. Skipping."
+            if [[ -z "$NEW_URL" ]]; then
+              echo "Error: Could not find a 'Ready' production deployment URL for $VERCEL_PROJECT_NAME. Skipping."
               continue
             fi
             
-            # Adiciona "https://" se não estiver presente
-            if [[ ! "$NEW_URL" == https://* ]]; then
-              NEW_URL="https://$NEW_URL"
-            fi
-
             echo "Found new URL: $NEW_URL"
-
-            # Remove a variável de ambiente antiga (ignora o erro se não existir)
-            echo "Removing old environment variable $ENV_VAR_NAME from project $FRONTEND_PROJECT_NAME..."
+            echo "Removing old env var $ENV_VAR_NAME..."
             vercel env rm $ENV_VAR_NAME production -y --token=$VERCEL_TOKEN || true
-
-            # Adiciona a nova variável de ambiente
-            echo "Adding new environment variable $ENV_VAR_NAME to project $FRONTEND_PROJECT_NAME..."
+            echo "Adding new env var $ENV_VAR_NAME..."
             echo $NEW_URL | vercel env add $ENV_VAR_NAME production --token=$VERCEL_TOKEN
-            
             echo "---"
           done
 
@@ -108,11 +87,11 @@ jobs:
         if: steps.changed_services.outputs.services
         run: |
           echo "Triggering a new production deployment for $FRONTEND_PROJECT_NAME..."
-          # Fetch the latest production deployment URL to redeploy it
-          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=$VERCEL_TOKEN | tail -n 1 | awk '{print $4}')
+          # Robustly parse the text table to find the first 'Ready' production deployment URL
+          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=$VERCEL_TOKEN | awk '/Ready/ {print $4; exit}')
           
-          if [ -z "$DEPLOYMENT_URL" ] || [ "$DEPLOYMENT_URL" == "null" ]; then
-            echo "Error: Could not find a production deployment for $FRONTEND_PROJECT_NAME to redeploy."
+          if [[ -z "$DEPLOYMENT_URL" ]]; then
+            echo "Error: Could not find a 'Ready' production deployment for $FRONTEND_PROJECT_NAME to redeploy."
             exit 1
           fi
 
