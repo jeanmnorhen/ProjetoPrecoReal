@@ -46,7 +46,7 @@ runs:
         echo "--- Debugging Vercel CLI ---"
         which vercel || { echo "Error: Vercel CLI not found."; exit 1; }
         vercel --version || { echo "Error: Vercel CLI failed to get version."; exit 1; }
-        vercel whoami || { echo "Error: Vercel CLI failed to authenticate. Check VERCEL_TOKEN permissions."; exit 1; }
+        vercel whoami --token ${{ inputs.vercel_token }} || { echo "Error: Vercel CLI failed to authenticate. Check VERCEL_TOKEN permissions."; exit 1; }
         echo "----------------------------"
 
         echo "Running Vercel deploy for ${{ inputs.vercel_project_name }}..."
