@@ -21,7 +21,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Necessário para obter o commit anterior
+          fetch-depth: 0
 
       - name: Install Vercel CLI and jq
         run: |
@@ -31,20 +31,14 @@ jobs:
       - name: Identify Changed Backend Services
         id: changed_services
         run: |
-          # Compara o commit atual com o anterior para encontrar arquivos alterados
           CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
           echo "Files changed in this push: $CHANGED_FILES"
-
-          # Filtra para obter uma lista única de diretórios de serviço
           CHANGED_SERVICES=$(echo "$CHANGED_FILES" | grep 'services/' | awk -F'/' '{print $2}' | sort -u)
-          
           if [ -z "$CHANGED_SERVICES" ]; then
             echo "No backend services were changed. Exiting."
             exit 0
           fi
-          
           echo "Backend services changed: $CHANGED_SERVICES"
-          # Disponibiliza a lista para os próximos passos
           echo "services=${CHANGED_SERVICES}" >> $GITHUB_OUTPUT
 
       - name: Update Vercel Environment Variables
@@ -67,18 +61,17 @@ jobs:
             esac
             
             echo "Fetching URL for $VERCEL_PROJECT_NAME..."
-            NEW_URL=$(vercel ls $VERCEL_PROJECT_NAME --prod --token=$VERCEL_TOKEN | awk '/Ready/ {print $2; exit}')
+            # Get the second line of the output, then the second word of that line.
+            NEW_URL=$(vercel ls $VERCEL_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | sed -n '2p' | awk '{print $2}')
 
             if [[ -z "$NEW_URL" ]]; then
-              echo "Error: Could not find a 'Ready' production deployment URL for $VERCEL_PROJECT_NAME. Skipping."
+              echo "Error: Could not parse deployment URL for $VERCEL_PROJECT_NAME. Skipping."
               continue
             fi
             
             echo "Found new URL: $NEW_URL"
-            echo "Removing old env var $ENV_VAR_NAME..."
-            vercel env rm $ENV_VAR_NAME production -y --token=$VERCEL_TOKEN || true
-            echo "Adding new env var $ENV_VAR_NAME..."
-            echo $NEW_URL | vercel env add $ENV_VAR_NAME production --token=$VERCEL_TOKEN
+            vercel env rm $ENV_VAR_NAME production -y --token=${{ secrets.VERCEL_TOKEN }} || true
+            echo $NEW_URL | vercel env add $ENV_VAR_NAME production --token=${{ secrets.VERCEL_TOKEN }}
             echo "---"
           done
 
@@ -86,13 +79,13 @@ jobs:
         if: steps.changed_services.outputs.services
         run: |
           echo "Triggering a new production deployment for $FRONTEND_PROJECT_NAME..."
-          # Robustly parse the text table to find the first 'Ready' production deployment URL
-          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=$VERCEL_TOKEN | awk '/Ready/ {print $2; exit}')
+          # Get the second line of the output, then the second word of that line.
+          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | sed -n '2p' | awk '{print $2}')
           
           if [[ -z "$DEPLOYMENT_URL" ]]; then
-            echo "Error: Could not find a 'Ready' production deployment for $FRONTEND_PROJECT_NAME to redeploy."
+            echo "Error: Could not parse deployment URL for $FRONTEND_PROJECT_NAME to redeploy."
             exit 1
           fi
 
           echo "Redeploying production deployment: $DEPLOYMENT_URL"
-          vercel redeploy $DEPLOYMENT_URL --target production --token=$VERCEL_TOKEN
+          vercel redeploy $DEPLOYMENT_URL --target production --token=${{ secrets.VERCEL_TOKEN }}
