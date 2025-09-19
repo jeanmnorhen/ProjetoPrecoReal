@@ -43,13 +43,21 @@ runs:
         echo "Running Vercel deploy for ${{ inputs.vercel_project_name }}..."
         DEPLOY_OUTPUT=$(vercel deploy --prebuilt --prod --token ${{ inputs.vercel_token }} --scope ${{ inputs.vercel_org_id }} --project ${{ inputs.vercel_project_name }} --confirm 2>&1)
         
+        echo "--- Vercel Deploy Output ---"
         echo "$DEPLOY_OUTPUT"
+        echo "----------------------------"
+
+        # Check the exit code of the vercel deploy command
+        if [ $? -ne 0 ]; then
+          echo "Erro: O comando 'vercel deploy' falhou. Verifique a saída acima para detalhes."
+          exit 1
+        fi
         
         # Extrai a URL do deploy da saída
         DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep -o 'https://[a-zA-Z0-9.-]*\.vercel\.app' | tail -n 1)
         
         if [ -z "$DEPLOY_URL" ]; then
-          echo "Erro: Não foi possível extrair a URL de deploy da saída da Vercel."
+          echo "Erro: O comando 'vercel deploy' foi bem-sucedido, mas não foi possível extrair a URL de deploy da saída da Vercel."
           exit 1
         fi
         
