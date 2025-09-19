@@ -8,6 +8,7 @@ from firebase_admin import credentials, auth, firestore
 from confluent_kafka import Producer
 import base64
 
+
 app = Flask(__name__)
 CORS(app)
 
