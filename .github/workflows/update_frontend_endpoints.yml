@@ -94,9 +94,15 @@ jobs:
         if: steps.changed_services.outputs.services
         run: |
           echo "Triggering a new production deployment for $FRONTEND_PROJECT_NAME..."
-          # Get the URL of the latest deployment with status 'Ready'
-          DEPLOYMENT_URL=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }} | sed 's/●//g' | grep 'Ready' | head -n 1 | awk '{print $2}')
+          echo "DEBUG: Fetching frontend deployment list..."
+          FRONTEND_DEPLOYMENT_LIST=$(vercel ls $FRONTEND_PROJECT_NAME --prod --token=${{ secrets.VERCEL_TOKEN }})
+          echo "DEBUG: FRONTEND_DEPLOYMENT_LIST:"
+          echo "$FRONTEND_DEPLOYMENT_LIST"
           
+          # Get the URL of the latest deployment with status 'Ready'
+          DEPLOYMENT_URL=$(echo "$FRONTEND_DEPLOYMENT_LIST" | sed 's/●//g' | grep 'Ready' | head -n 1 | awk '{print $2}')
+          echo "DEBUG: DEPLOYMENT_URL extracted: '$DEPLOYMENT_URL'"
+
           if [[ -z "$DEPLOYMENT_URL" ]]; then
             echo "Error: Could not parse deployment URL for $FRONTEND_PROJECT_NAME to redeploy."
             exit 1
