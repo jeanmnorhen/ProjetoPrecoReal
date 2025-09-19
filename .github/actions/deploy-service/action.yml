@@ -50,8 +50,10 @@ runs:
         echo "----------------------------"
 
         echo "Running Vercel deploy for ${{ inputs.vercel_project_name }}..."
+        set -x # Enable debugging output for the shell
         DEPLOY_OUTPUT=$(vercel deploy --prebuilt --prod --token ${{ inputs.vercel_token }} --scope ${{ inputs.vercel_org_id }} --project ${{ inputs.vercel_project_name }} --confirm 2>&1)
-        DEPLOY_EXIT_CODE=$? # Capture exit code immediately after the command
+        DEPLOY_EXIT_CODE=$?
+        set +x # Disable debugging output
 
         echo "--- Vercel Deploy Output ---"
         echo "$DEPLOY_OUTPUT"
