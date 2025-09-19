@@ -12,7 +12,7 @@ import base64
 app = Flask(__name__)
 CORS(app)
 
-# --- Variáveis globais para  e rrosde inicialização - -- 
+# --- Variáveis globais para  errosde inicialização - -- 
 
 firebase_init_error = None
 kafka_producer_init_error = None
