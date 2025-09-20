@@ -1,6 +1,7 @@
 import os
 import json
 import uuid
+import requests
 from datetime import datetime, timezone
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -226,11 +227,13 @@ def create_store():
     store_id = str(uuid.uuid4())
     firestore_data = store_data.copy()
     location_data = firestore_data.pop('location', None)
-    firestore_data['owner_uid'] = uid
+    # O campo owner_uid não é mais salvo diretamente no documento da loja.
+    # firestore_data['owner_uid'] = uid 
     firestore_data['created_at'] = firestore.SERVER_TIMESTAMP
     firestore_data['updated_at'] = firestore.SERVER_TIMESTAMP
 
     try:
+        # Etapa 1: Preparar dados para os bancos de dados
         if location_data and 'latitude' in location_data and 'longitude' in location_data:
             lat = location_data['latitude']
             lon = location_data['longitude']
@@ -239,17 +242,33 @@ def create_store():
             db_session.add(new_location)
 
         db.collection('stores').document(store_id).set(firestore_data)
+
+        # Etapa 2: Chamar servico-usuarios para atribuir o papel de 'owner'
+        servico_usuarios_url = os.environ.get('SERVICO_USUARIOS_URL')
+        internal_secret = os.environ.get('INTERNAL_SERVICE_SECRET')
+        if not servico_usuarios_url or not internal_secret:
+            raise Exception("URL do serviço de usuários ou segredo interno não configurado.")
+
+        role_payload = {'user_id': uid, 'store_id': store_id, 'role': 'owner'}
+        headers = {'Authorization': f'Bearer {internal_secret}', 'Content-Type': 'application/json'}
+        
+        response = requests.post(f"{servico_usuarios_url}/internal/roles", json=role_payload, headers=headers, timeout=5)
+        response.raise_for_status() # Lança uma exceção para status de erro (4xx ou 5xx)
+
+        # Etapa 3: Se tudo deu certo, commitar a transação no banco de dados local
         db_session.commit()
 
+        # Etapa 4: Publicar evento de sucesso
         publish_event('eventos_lojas', 'StoreCreated', store_id, store_data)
         return jsonify({"message": "Store created successfully", "storeId": store_id}), 201
 
-    except SQLAlchemyError as e:
-        db_session.rollback()
-        return jsonify({"error": f"Erro no banco de dados geoespacial: {e}"}), 500
     except Exception as e:
+        # Se qualquer etapa falhar, reverter a transação do banco de dados
         db_session.rollback()
-        return jsonify({"error": f"Erro ao criar loja: {e}"}), 500
+        # Tentar deletar o documento no Firestore se ele já foi criado
+        db.collection('stores').document(store_id).delete()
+        print(f"ERRO na criação da loja: {e}")
+        return jsonify({"error": f"Erro ao criar loja ou atribuir papel: {e}"}), 500
 
 @app.route('/api/stores/<store_id>', methods=['GET'])
 def get_store(store_id):

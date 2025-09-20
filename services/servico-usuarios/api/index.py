@@ -19,9 +19,10 @@ except ImportError:
 
 
 try:
-    from sqlalchemy import create_engine, Column, String, MetaData, text
+    from sqlalchemy import create_engine, Column, String, MetaData, text, func
     from sqlalchemy.orm import sessionmaker, declarative_base
     from sqlalchemy.exc import SQLAlchemyError
+    from sqlalchemy.dialects.postgresql import JSON
     from geoalchemy2 import Geography
     from geoalchemy2.shape import to_shape
     from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
@@ -29,8 +30,9 @@ except ImportError:
     SQLAlchemyError = None
     declarative_base = None
     create_engine = None
-    Column = String = MetaData = sessionmaker = Geography = to_shape = text = None
+    Column = String = MetaData = sessionmaker = Geography = to_shape = text = func = None
     urlparse = urlunparse = parse_qs = urlencode = None
+    JSON = None
 
 from flask_cors import CORS
 
@@ -109,6 +111,19 @@ if Base != object and Geography:
         user_id = Column(String, primary_key=True)
         location = Column(Geography(geometry_type='POINT', srid=4326), nullable=False)
 
+    class UserStoreRole(Base):
+        __tablename__ = 'user_store_roles'
+        user_id = Column(String, primary_key=True)
+        store_id = Column(String, primary_key=True)
+        role = Column(String, nullable=False)  # Ex: 'owner', 'employee'
+        shifts = Column(JSON)  # Ex: ["manha", "tarde"]
+
+    class StoreLocation(Base):
+        __tablename__ = 'store_locations'
+        store_id = Column(String, primary_key=True)
+        location = Column(Geography(geometry_type='POINT', srid=4326), nullable=False)
+
+
 def init_db():
     global db_init_error
     if not engine:
@@ -121,10 +136,10 @@ def init_db():
         return
     try:
         Base.metadata.create_all(engine)
-        print("Tabela 'user_locations' verificada/criada com sucesso.")
+        print("Tabelas do banco de dados verificadas/criadas com sucesso.")
     except Exception as e:
         db_init_error = str(e)
-        print(f"Erro ao criar tabela 'user_locations': {e}")
+        print(f"Erro ao criar tabelas do banco de dados: {e}")
 
 # --- Configuração do Kafka Producer ---
 producer = None
@@ -311,6 +326,229 @@ def delete_user(user_id):
     except Exception as e:
         db_session.rollback()
         return jsonify({"error": f"Erro ao deletar usuário: {e}"}), 500
+
+# --- Funções Auxiliares de Autorização ---
+
+def verify_owner(user_id, store_id):
+    if not db_session:
+        return False
+    try:
+        role_entry = db_session.query(UserStoreRole).filter_by(user_id=user_id, store_id=store_id).first()
+        if role_entry and role_entry.role == 'owner':
+            return True
+        return False
+    except Exception as e:
+        print(f"Erro ao verificar proprietário: {e}")
+        return False
+
+# --- Rotas de Gerenciamento de Funcionários ---
+
+@app.route('/api/stores/<store_id>/employees', methods=['POST'])
+def add_employee(store_id):
+    if not db or not db_session:
+        return jsonify({"error": "Dependências de banco de dados não inicializadas."}), 503
+
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Authorization token is required"}), 401
+    try:
+        id_token = auth_header.split('Bearer ')[1]
+        decoded_token = auth.verify_id_token(id_token)
+        requestor_uid = decoded_token['uid']
+    except Exception as e:
+        return jsonify({"error": "Invalid or expired token", "details": str(e)}), 401
+
+    if not verify_owner(requestor_uid, store_id):
+        return jsonify({"error": "Apenas o proprietário da loja pode adicionar funcionários."}), 403
+
+    data = request.json
+    if not data or not data.get('employee_id') or not isinstance(data.get('shifts'), list):
+        return jsonify({"error": "employee_id e uma lista de shifts são obrigatórios."}), 400
+
+    try:
+        new_employee_role = UserStoreRole(
+            user_id=data['employee_id'],
+            store_id=store_id,
+            role='employee',
+            shifts=data['shifts']
+        )
+        db_session.merge(new_employee_role)
+        db_session.commit()
+        publish_event('eventos_funcionarios', 'EmployeeAdded', data['employee_id'], {"store_id": store_id, **data})
+        return jsonify({"message": "Funcionário adicionado com sucesso."}), 201
+    except Exception as e:
+        db_session.rollback()
+        return jsonify({"error": f"Erro ao adicionar funcionário: {e}"}), 500
+
+@app.route('/api/stores/<store_id>/employees', methods=['GET'])
+def list_employees(store_id):
+    if not db or not db_session:
+        return jsonify({"error": "Dependências de banco de dados não inicializadas."}), 503
+
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Authorization token is required"}), 401
+    try:
+        id_token = auth_header.split('Bearer ')[1]
+        decoded_token = auth.verify_id_token(id_token)
+        requestor_uid = decoded_token['uid']
+    except Exception as e:
+        return jsonify({"error": "Invalid or expired token", "details": str(e)}), 401
+
+    if not verify_owner(requestor_uid, store_id):
+        return jsonify({"error": "Apenas o proprietário da loja pode ver os funcionários."}), 403
+
+    try:
+        roles = db_session.query(UserStoreRole).filter_by(store_id=store_id).all()
+        employees_details = []
+        for role in roles:
+            user_doc = db.collection('users').document(role.user_id).get()
+            if user_doc.exists:
+                user_data = user_doc.to_dict()
+                employees_details.append({
+                    "user_id": role.user_id,
+                    "role": role.role,
+                    "shifts": role.shifts,
+                    "name": user_data.get('name'),
+                    "email": user_data.get('email')
+                })
+        return jsonify(employees_details), 200
+    except Exception as e:
+        return jsonify({"error": f"Erro ao listar funcionários: {e}"}), 500
+
+@app.route('/api/stores/<store_id>/employees/<employee_id>', methods=['DELETE'])
+def remove_employee(store_id, employee_id):
+    if not db or not db_session:
+        return jsonify({"error": "Dependências de banco de dados não inicializadas."}), 503
+
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Authorization token is required"}), 401
+    try:
+        id_token = auth_header.split('Bearer ')[1]
+        decoded_token = auth.verify_id_token(id_token)
+        requestor_uid = decoded_token['uid']
+    except Exception as e:
+        return jsonify({"error": "Invalid or expired token", "details": str(e)}), 401
+
+    if not verify_owner(requestor_uid, store_id):
+        return jsonify({"error": "Apenas o proprietário da loja pode remover funcionários."}), 403
+
+    try:
+        role_to_delete = db_session.query(UserStoreRole).filter_by(user_id=employee_id, store_id=store_id).first()
+        if not role_to_delete:
+            return jsonify({"error": "Vínculo de funcionário não encontrado."}), 404
+        
+        db_session.delete(role_to_delete)
+        db_session.commit()
+        publish_event('eventos_funcionarios', 'EmployeeRemoved', employee_id, {'store_id': store_id, 'employee_id': employee_id})
+        return '', 204
+    except Exception as e:
+        db_session.rollback()
+        return jsonify({"error": f"Erro ao remover funcionário: {e}"}), 500
+
+# --- Rotas Internas (Serviço-para-Serviço) ---
+
+@app.route('/internal/roles', methods=['POST'])
+def assign_role():
+    if not db_session:
+        return jsonify({"error": "Dependência do banco de dados não inicializada."}), 503
+
+    # Esta rota deve ser protegida por um segredo compartilhado ou mTLS em produção
+    # Por simplicidade, vamos usar um header com um segredo simples
+    internal_secret = os.environ.get('INTERNAL_SERVICE_SECRET')
+    auth_header = request.headers.get('Authorization')
+    if not internal_secret or auth_header != f'Bearer {internal_secret}':
+        return jsonify({"error": "Unauthorized internal service"}), 401
+
+    data = request.json
+    if not data or not data.get('user_id') or not data.get('store_id') or not data.get('role'):
+        return jsonify({"error": "user_id, store_id, e role são obrigatórios."}), 400
+
+    try:
+        # Usar merge para inserir ou atualizar o papel (UPSERT)
+        new_role = UserStoreRole(
+            user_id=data['user_id'],
+            store_id=data['store_id'],
+            role=data['role'],
+            shifts=data.get('shifts')  # Opcional, principalmente para funcionários
+        )
+        db_session.merge(new_role)
+        db_session.commit()
+
+        # Publicar evento para notificar outros sistemas (opcional, mas bom para auditoria)
+        publish_event('eventos_funcionarios', 'UserRoleAssigned', data['user_id'], data)
+
+        return jsonify({"message": f"Papel '{data['role']}' atribuído com sucesso."}), 201
+
+    except SQLAlchemyError as e:
+        db_session.rollback()
+        return jsonify({"error": f"Erro no banco de dados ao atribuir papel: {e}"}), 500
+    except Exception as e:
+        db_session.rollback()
+        return jsonify({"error": f"Erro inesperado ao atribuir papel: {e}"}), 500
+
+
+@app.route('/api/permissions/check', methods=['GET'])
+def check_permission():
+    user_id = request.args.get('user_id')
+    store_id = request.args.get('store_id')
+
+    if not user_id or not store_id:
+        return jsonify({"allow": False, "reason": "user_id and store_id are required"}), 400
+
+    if not db_session:
+        return jsonify({"allow": False, "reason": "database dependency not available"}), 503
+
+    try:
+        role_entry = db_session.query(UserStoreRole).filter_by(user_id=user_id, store_id=store_id).first()
+
+        if not role_entry:
+            return jsonify({"allow": False, "reason": "not_associated"}), 403
+
+        if role_entry.role == 'owner':
+            return jsonify({"allow": True, "role": "owner"}), 200
+
+        if role_entry.role == 'employee':
+            # 1. Verificar Turno
+            shifts = role_entry.shifts or []
+            now_utc = datetime.now(timezone.utc)
+            current_hour = now_utc.hour
+            
+            # Mapeamento de turnos para horas (exemplo)
+            shift_hours = {
+                "madrugada": range(0, 6),    # 00:00 - 05:59
+                "manha": range(6, 12),     # 06:00 - 11:59
+                "tarde": range(12, 18),    # 12:00 - 17:59
+                "noite": range(18, 24)     # 18:00 - 23:59
+            }
+
+            in_shift = any(current_hour in shift_hours.get(s, range(-1,-1)) for s in shifts)
+            if not in_shift:
+                return jsonify({"allow": False, "reason": "outside_shift"}), 403
+
+            # 2. Verificar Geofence (ex: 150 metros)
+            GEOFENCE_RADIUS_METERS = 150
+            is_within_geofence = db_session.query(func.ST_DWithin(
+                UserLocation.location,
+                StoreLocation.location,
+                GEOFENCE_RADIUS_METERS
+            )).filter(
+                UserLocation.user_id == user_id,
+                StoreLocation.store_id == store_id
+            ).scalar()
+
+            if not is_within_geofence:
+                return jsonify({"allow": False, "reason": "outside_geofence"}), 403
+            
+            # Se passou em todas as verificações de funcionário
+            return jsonify({"allow": True, "role": "employee"}), 200
+
+        # Papel desconhecido
+        return jsonify({"allow": False, "reason": "unknown_role"}), 403
+
+    except Exception as e:
+        return jsonify({"allow": False, "reason": f"internal_error: {e}"}), 500
 
 # --- Health Check (para Vercel) ---
 def get_health_status():

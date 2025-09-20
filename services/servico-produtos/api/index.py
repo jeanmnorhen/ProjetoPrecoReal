@@ -1,5 +1,6 @@
 import os
 import json
+import requests
 from datetime import datetime, timezone
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -17,76 +18,32 @@ CORS(app)
 firebase_init_error = None
 kafka_producer_init_error = None
 
-# --- Inicialização d  Firebase Admin SDK  ---   
-# Tenta carregar as credenciais a partir da variável Base64
+# --- Funções Auxiliares ---
 
-firebase_sdk_cred_base64 = os.environ.get('FIREBASE_ADMIN_SDK_BASE64')
-db = None
-if firebase_sdk_cred_base64:
+def check_permission(user_id, store_id):
+    """Chama o servico-usuarios para verificar se um usuário tem permissão para gerenciar uma loja."""
+    servico_usuarios_url = os.environ.get('SERVICO_USUARIOS_URL')
+    if not servico_usuarios_url:
+        print("ERRO: SERVICO_USUARIOS_URL não configurado.")
+        return False, {"error": "URL do serviço de permissões não configurada."
+
     try:
-        decoded_sdk = base64.b64decode(firebase_sdk_cred_base64).decode('utf-8')
-        cred_dict = json.loads(decoded_sdk)
-        cred = credentials.Certificate(cred_dict)
-        if not firebase_admin._apps:
-            firebase_admin.initialize_app(cred)
-        db = firestore.client()
-        print("Firebase Admin SDK inicializado com sucesso a partir do Base64.")
-    except Exception as e:
-        firebase_init_error = str(e)
-        print(f"Erro ao inicializar o Firebase Admin SDK a partir do Base64: {e}")
-else:
-    firebase_init_error = "Variável de ambiente FIREBASE_ADMIN_SDK_BASE64 não encontrada."
-    print(firebase_init_error)
+        # O token do usuário original não é necessário aqui, pois usamos o segredo interno.
+        response = requests.get(
+            f"{servico_usuarios_url}/api/permissions/check",
+            params={'user_id': user_id, 'store_id': store_id},
+            timeout=5
+        )
+        if response.status_code == 200:
+            return response.json().get('allow', False), response.json()
+        else:
+            return False, response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao contatar o serviço de permissões: {e}")
+        return False, {"error": "Falha ao contatar o serviço de permissões."}
 
-# --- Configuração do Kafka Producer ---
-producer = None
-try:
-    kafka_conf = {
-        'bootstrap.servers': os.environ.get('KAFKA_BOOTSTRAP_SERVER'),
-        'security.protocol': 'SASL_SSL',
-        'sasl.mechanisms': 'PLAIN',
-        'sasl.username': os.environ.get('KAFKA_API_KEY'),
-        'sasl.password': os.environ.get('KAFKA_API_SECRET')
-    }
-    if kafka_conf['bootstrap.servers']:
-        producer = Producer(kafka_conf)
-        print("Produtor Kafka inicializado com sucesso.")
-    else:
-        kafka_producer_init_error = "Variáveis de ambiente do Kafka não encontradas para o producer."
-        print(kafka_producer_init_error)
-except Exception as e:
-    kafka_producer_init_error = str(e)
-    print(f"Erro ao inicializar Produtor Kafka: {e}")
 
-def delivery_report(err, msg):
-    if err is not None:
-        print(f'Falha ao entregar mensagem Kafka: {err}')
-    else:
-        print(f'Mensagem Kafka entregue em {msg.topic()} [{msg.partition()}]')
-
-def publish_event(topic, event_type, product_id, data, changes=None):
-    if not producer:
-        print("Produtor Kafka não está inicializado. Evento não publicado.")
-        return
-    event = {
-        "event_type": event_type,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "product_id": product_id,
-        "data": data,
-        "source_service": "servico-produtos"
-    }
-    if changes:
-        event["changes"] = changes
-    try:
-        event_value = json.dumps(event, default=str)
-        producer.produce(topic, key=product_id, value=event_value, callback=delivery_report)
-        producer.poll(0)
-        print(f"Evento '{event_type}' para o produto {product_id} publicado no tópico {topic}.")
-    except Exception as e:
-        print(f"Erro ao publicar evento Kafka: {e}")
-
-@app.route('/api/products', methods=['GET'])
-def list_all_products():
+@app.route('/api/products', methods=['GET'])def list_all_products():
     if not db:
         return jsonify({"error": "Dependência do Firestore não inicializada."}), 503
 
@@ -104,11 +61,8 @@ def list_all_products():
     except Exception as e:
         return jsonify({"error": f"Erro ao listar produtos: {e}"}), 500
 
-@app.route("/api/products", methods=["POST", "OPTIONS"])
+@app.route("/api/products", methods=["POST"])
 def create_product():
-    if request.method == 'OPTIONS':
-        return '', 204
-
     if not db:
         return jsonify({"error": "Dependência do Firestore não inicializada."}), 503
 
@@ -129,19 +83,13 @@ def create_product():
     
     store_id = product_data['store_id']
 
-    try:
-        store_ref = db.collection('stores').document(store_id)
-        store_doc = store_ref.get()
-        if not store_doc.exists:
-            return jsonify({"error": "Store not found"}), 404
-        if store_doc.to_dict().get('owner_uid') != uid:
-            return jsonify({"error": "User is not authorized to add products to this store"}), 403
-    except Exception as e:
-        return jsonify({"error": "Could not verify store ownership", "details": str(e)}), 500
+    # Nova verificação de permissão centralizada
+    allowed, reason = check_permission(uid, store_id)
+    if not allowed:
+        return jsonify({"error": "User is not authorized to add products to this store", "details": reason}), 403
 
     try:
         product_to_create = product_data.copy()
-        product_to_create['owner_uid'] = uid
         product_to_create['created_at'] = firestore.SERVER_TIMESTAMP
         product_to_create['updated_at'] = firestore.SERVER_TIMESTAMP
         _, doc_ref = db.collection('products').add(product_to_create)
@@ -166,7 +114,7 @@ def get_product(product_id):
     except Exception as e:
         return jsonify({"error": f"Erro ao buscar produto: {e}"}), 500
 
-@app.route('/api/products/<product_id>', methods=['PUT', 'OPTIONS'])
+@app.route('/api/products/<product_id>', methods=['PUT'])
 def update_product(product_id):
     if not db:
         return jsonify({"error": "Dependência do Firestore não inicializada."}), 503
@@ -192,8 +140,15 @@ def update_product(product_id):
         product_doc = product_ref.get()
         if not product_doc.exists:
             return jsonify({"error": "Produto não encontrado."}), 404
-        if product_doc.to_dict().get('owner_uid') != uid:
-            return jsonify({"error": "User is not authorized to update this product"}), 403
+        
+        store_id = product_doc.to_dict().get('store_id')
+        if not store_id:
+            return jsonify({"error": "Produto não tem uma loja associada."}), 500
+
+        # Nova verificação de permissão
+        allowed, reason = check_permission(uid, store_id)
+        if not allowed:
+            return jsonify({"error": "User is not authorized to update this product", "details": reason}), 403
 
         update_data['updated_at'] = firestore.SERVER_TIMESTAMP
         product_ref.update(update_data)
@@ -225,8 +180,15 @@ def delete_product(product_id):
         product_doc = product_ref.get()
         if not product_doc.exists:
             return jsonify({"error": "Produto não encontrado."}), 404
-        if product_doc.to_dict().get('owner_uid') != uid:
-            return jsonify({"error": "User is not authorized to delete this product"}), 403
+
+        store_id = product_doc.to_dict().get('store_id')
+        if not store_id:
+            return jsonify({"error": "Produto não tem uma loja associada."}), 500
+
+        # Nova verificação de permissão
+        allowed, reason = check_permission(uid, store_id)
+        if not allowed:
+            return jsonify({"error": "User is not authorized to delete this product", "details": reason}), 403
 
         product_ref.delete()
 

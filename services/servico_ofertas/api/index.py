@@ -1,6 +1,7 @@
 import os
 import json
 import base64
+import requests
 from datetime import datetime, timezone
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -18,11 +19,32 @@ except ImportError:
 
 # --- Variáveis globais para erros de inicialização ---
 firebase_init_error = None
-kafka_producer_init_error = None # Renamed for clarity
+kafka_producer_init_error = None
 
 # --- Configuração do Flask ---
 app = Flask(__name__)
 CORS(app)
+
+# --- Funções Auxiliares ---
+
+def check_permission(user_id, store_id):
+    servico_usuarios_url = os.environ.get('SERVICO_USUARIOS_URL')
+    if not servico_usuarios_url:
+        print("ERRO: SERVICO_USUARIOS_URL não configurado.")
+        return False, {"error": "URL do serviço de permissões não configurada."}
+    try:
+        response = requests.get(
+            f"{servico_usuarios_url}/api/permissions/check",
+            params={'user_id': user_id, 'store_id': store_id},
+            timeout=5
+        )
+        if response.status_code == 200:
+            return response.json().get('allow', False), response.json()
+        else:
+            return False, response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao contatar o serviço de permissões: {e}")
+        return False, {"error": "Falha ao contatar o serviço de permissões."}
 
 # --- Inicialização do Firebase Admin SDK (PADRONIZADO) ---
 db = None
@@ -124,17 +146,21 @@ def create_offer():
         if not product_doc.exists:
             return jsonify({"error": "Product not found"}), 404
         
-        if product_doc.to_dict().get('owner_uid') != uid:
-            return jsonify({"error": "User is not authorized to create offers for this product"}), 403
+        store_id = product_doc.to_dict().get('store_id')
+        if not store_id:
+            return jsonify({"error": "Produto não tem uma loja associada."}), 500
+
+        allowed, reason = check_permission(uid, store_id)
+        if not allowed:
+            return jsonify({"error": "User is not authorized to create offers for this product's store", "details": reason}), 403
         
-        offer_data['store_id'] = product_doc.to_dict().get('store_id')
+        offer_data['store_id'] = store_id
 
     except Exception as e:
         return jsonify({"error": "Could not verify product ownership", "details": str(e)}), 500
 
     try:
         offer_to_create = offer_data.copy()
-        offer_to_create['owner_uid'] = uid
         offer_to_create['created_at'] = firestore.SERVER_TIMESTAMP
         offer_to_create['updated_at'] = firestore.SERVER_TIMESTAMP
         _, doc_ref = db.collection('offers').add(offer_to_create)
@@ -186,8 +212,21 @@ def update_offer(offer_id):
         if not offer_doc.exists:
             return jsonify({"error": "Oferta não encontrada."}), 404
         
-        if offer_doc.to_dict().get('owner_uid') != uid:
-            return jsonify({"error": "User is not authorized to update this offer"}), 403
+        product_id = offer_doc.to_dict().get('product_id')
+        if not product_id:
+            return jsonify({"error": "Oferta não tem um produto associado."}), 500
+
+        product_doc = db.collection('products').document(product_id).get()
+        if not product_doc.exists:
+            return jsonify({"error": "Produto associado à oferta não encontrado."}), 404
+        
+        store_id = product_doc.to_dict().get('store_id')
+        if not store_id:
+            return jsonify({"error": "Produto não tem uma loja associada."}), 500
+
+        allowed, reason = check_permission(uid, store_id)
+        if not allowed:
+            return jsonify({"error": "User is not authorized to update this offer", "details": reason}), 403
 
         update_data['updated_at'] = firestore.SERVER_TIMESTAMP
         offer_ref.update(update_data)
@@ -221,8 +260,21 @@ def delete_offer(offer_id):
         if not offer_doc.exists:
             return jsonify({"error": "Oferta não encontrada."}), 404
         
-        if offer_doc.to_dict().get('owner_uid') != uid:
-            return jsonify({"error": "User is not authorized to delete this offer"}), 403
+        product_id = offer_doc.to_dict().get('product_id')
+        if not product_id:
+            return jsonify({"error": "Oferta não tem um produto associado."}), 500
+
+        product_doc = db.collection('products').document(product_id).get()
+        if not product_doc.exists:
+            return jsonify({"error": "Produto associado à oferta não encontrado."}), 404
+        
+        store_id = product_doc.to_dict().get('store_id')
+        if not store_id:
+            return jsonify({"error": "Produto não tem uma loja associada."}), 500
+
+        allowed, reason = check_permission(uid, store_id)
+        if not allowed:
+            return jsonify({"error": "User is not authorized to delete this offer", "details": reason}), 403
 
         offer_ref.delete()
 
