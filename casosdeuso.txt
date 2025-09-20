@@ -27,18 +27,50 @@ Se o usuário não estiver logado, ele é solicitado a fazer login/cadastro. Ond
 
 2. Fluxo do Lojista  (Usuário vendedor)
 
-O lojista gerencia um perfil de lojista que conta com uma vitrine virtual de produtos.
-Um produto deve estar em uma vitrine virtual para ser Anunciado como oferta, promoção ou promoção relâmpago.
+O lojista pode gerenciar múltiplas lojas ou filiais a partir de uma única conta.
 
 Cadastro e Login (Idêntico ao consumidor para autenticação inicial).
 
-Gerenciamento de Loja
+Seleção de Loja:
+Após o login, se o lojista gerencia mais de uma loja, ele é direcionado para uma tela de seleção. Nessa tela, ele pode escolher qual loja deseja administrar na sessão atual ou optar por adicionar uma nova loja.
+Se o lojista gerencia apenas uma loja, ele é levado diretamente para o painel de controle dessa loja.
 
-Registro de Nova Loja:
-Preenche um formulário com nome da loja, endereço, contatos, categoria da loja, descrição, localização geográfica da loja.
-O lojista deve poder gerenciar os dados de perfil, sua vitrine virtual e seus anúncios ativos em um painel administrativo próprio.
+Painel de Controle (Contextual à Loja Selecionada):
+O lojista gerencia os dados de perfil, a vitrine virtual e os anúncios ativos. Todas as ações subsequentes são realizadas no contexto da loja selecionada.
 
-3. Fluxo do Administrador (Requer Autenticação e Status de Admin)
+Gerenciamento de Loja:
+O lojista pode adicionar novas lojas/filiais ou editar as informações de uma loja existente (nome, endereço, contatos, etc.) a partir da tela de seleção de loja.
+
+Gerenciamento de Funcionários (Contextual à Loja Selecionada):
+No seu painel, o lojista acessa a seção "Funcionários".
+Adicionar Funcionário: O lojista busca por um usuário existente para designá-lo como funcionário **para a loja atualmente selecionada**.
+Definir Turnos: Ao adicionar, o lojista define os turnos de trabalho do funcionário para aquele vínculo específico.
+Gerenciar: O lojista pode visualizar e gerenciar a lista de funcionários da loja selecionada.
+
+
+3. Fluxo do Funcionário
+
+O funcionário é um usuário comum que foi designado por um lojista para uma ou mais lojas.
+
+Login: O funcionário faz login normalmente.
+
+Seleção de Loja (se aplicável):
+Se o funcionário trabalha em mais de uma loja, ele é solicitado a escolher para qual loja deseja registrar atividades.
+
+Painel de Controle Condicional:
+O aplicativo identifica o vínculo do funcionário com a loja selecionada.
+O sistema realiza uma verificação contínua:
+1.  **Verificação de Geolocalização:** Confere se a localização do dispositivo está dentro do perímetro da loja selecionada.
+2.  **Verificação de Horário:** Confere se o horário atual corresponde a um dos turnos de trabalho para aquele vínculo.
+
+Acesso Permitido:
+Se as condições forem verdadeiras, o funcionário acessa um painel para gerenciar **Produtos** e **Ofertas** da loja selecionada.
+
+Acesso Negado:
+Se as condições forem falsas, as funcionalidades de gerenciamento são desabilitadas/ocultas com uma mensagem informativa.
+
+
+4. Fluxo do Administrador (Requer Autenticação e Status de Admin)
 
 O administrador gerencia o catálogo de produtos canônicos e monitora médias de preço por região geográfica.
 O status de administrador será gerenciado diretamente no firebase.
