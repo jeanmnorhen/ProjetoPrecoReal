@@ -1,27 +1,10 @@
 // frontend-tester/src/app/canonicos/page.tsx
 "use client";
 
-import { useAuth } from "../../context/AuthContext";
-import AuthForm from "../../components/AuthForm";
+import withAdminAuth from "../../components/withAdminAuth";
 
-export default function CanonicosPage() {
-  const { currentUser, loading } = useAuth();
-
-  if (loading) {
-    return <div className="text-center p-10">Carregando...</div>;
-  }
-
-  // Idealmente, teríamos uma verificação de `isAdmin` aqui.
-  if (!currentUser) {
-    return (
-      <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4 text-center">Acesso Negado</h1>
-        <p className="text-center mb-4">Você precisa ser um administrador para acessar esta página.</p>
-        <AuthForm />
-      </div>
-    );
-  }
-
+function CanonicosPage() {
+  // O conteúdo da página permanece o mesmo, a lógica de auth foi abstraída pelo HOC
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-6">Gerenciamento de Produtos Canônicos</h1>
@@ -38,3 +21,6 @@ export default function CanonicosPage() {
     </div>
   );
 }
+
+// Envolver a página com o HOC de autenticação de admin
+export default withAdminAuth(CanonicosPage);

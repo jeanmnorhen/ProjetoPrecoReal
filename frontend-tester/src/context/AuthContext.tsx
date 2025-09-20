@@ -7,25 +7,31 @@ import { auth } from '../../lib/firebase'; // Adjust path as needed
 
 interface AuthContextType {
   currentUser: User | null;
-  loading: boolean;
   idToken: string | null;
+  isAdmin: boolean;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
   const [idToken, setIdToken] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
-        const token = await user.getIdToken();
-        setIdToken(token);
+        const tokenResult = await user.getIdTokenResult();
+        setIdToken(tokenResult.token);
+        // Verifica a custom claim 'admin'
+        setIsAdmin(tokenResult.claims.admin === true);
       } else {
+        // Reset state on logout
         setIdToken(null);
+        setIsAdmin(false);
       }
       setLoading(false);
     });
@@ -34,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ currentUser, loading, idToken }}>
+    <AuthContext.Provider value={{ currentUser, idToken, isAdmin, loading }}>
       {children}
     </AuthContext.Provider>
   );
