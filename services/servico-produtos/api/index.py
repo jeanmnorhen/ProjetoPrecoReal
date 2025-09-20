@@ -18,7 +18,7 @@ CORS(app, supports_credentials=True, origins=['https://frontend-tester-1foc8lpkl
 firebase_init_error = None
 kafka_producer_init_error = None
 
-# --- Funções Auxiliares ---
+# --- Funções Auxiliares  ---
 
 def check_permission(user_id, store_id):
     """Chama o servico-usuarios para verificar se um usuário tem permissão para gerenciar uma loja."""
