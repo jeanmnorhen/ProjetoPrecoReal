@@ -12,7 +12,7 @@ except ImportError:
     firebase_admin = None
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, origins=['https://frontend-tester-1foc8lpkl-jeanmnorhens-projects.vercel.app'])
 
 # --- Variáveis globais para erros de inicialização ---
 firebase_init_error = None

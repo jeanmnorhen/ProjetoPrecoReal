@@ -11,7 +11,7 @@ import base64
 
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, origins=['https://frontend-tester-1foc8lpkl-jeanmnorhens-projects.vercel.app'])
 
 # --- Variáveis globais para  errosde inicialização --- 
 

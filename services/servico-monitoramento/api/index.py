@@ -8,7 +8,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 from confluent_kafka import Consumer, KafkaException
 
 app = Flask(__name__)
-CORS(app) 
+CORS(app, supports_credentials=True, origins=['https://frontend-tester-1foc8lpkl-jeanmnorhens-projects.vercel.app'])
 
 # --- Variáveis globais para erros de inicialização ---
 influxdb_init_error = None

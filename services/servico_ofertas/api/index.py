@@ -23,7 +23,7 @@ kafka_producer_init_error = None
 
 # --- Configuração do Flask ---
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, origins=['https://frontend-tester-1foc8lpkl-jeanmnorhens-projects.vercel.app'])
 
 # --- Funções Auxiliares ---
 
