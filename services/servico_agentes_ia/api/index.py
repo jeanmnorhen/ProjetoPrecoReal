@@ -156,8 +156,10 @@ def publish_event(topic, event_type, task_id, data, changes=None):
 
 def process_image_analysis(task):
     model = get_gemini_model()
-    if not model:
-        return {"error": "Modelo Gemini não inicializado."}
+    firestore_db = get_db()
+
+    if not model or not firestore_db:
+        return {"error": "Dependências críticas (Gemini ou Firestore) não inicializadas."}
 
     try:
         image_b64 = task.get('image_b64')
@@ -171,30 +173,45 @@ def process_image_analysis(task):
         response = model.generate_content([prompt, img])
         product_name = response.text.strip()
         print(f"Produto identificado pela IA: {product_name}")
-        
-        result_data = {
-            "task_id": task.get('task_id'),
-            "product_name": product_name,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "source_image_url": task.get('source_image_url'),
-            "status": "completed"
-        }
 
-        firestore_db = get_db()
-        if firestore_db:
-            try:
-                doc_ref = firestore_db.collection('ai_results').document(task.get('task_id'))
-                doc_ref.set(result_data)
-                print(f"Resultado da IA salvo no Firestore para task_id: {task.get('task_id')}")
-            except Exception as e:
-                print(f"Erro ao salvar resultado no Firestore: {e}")
-                result_data["firestore_error"] = str(e)
+        # Verificar se o produto já existe no catálogo canônico
+        product_ref = firestore_db.collection('products').where('name', '==', product_name).limit(1)
+        product_docs = list(product_ref.stream())
+        product_exists = len(product_docs) > 0
+
+        task_id = task.get('task_id')
+
+        if product_exists:
+            # Produto existe, fluxo normal
+            print(f"Produto '{product_name}' já existe no catálogo.")
+            result_data = {
+                "task_id": task_id,
+                "product_name": product_name,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "completed"
+            }
+            publish_event('resultados_ia', 'ImageAnalysisResult', task_id, result_data)
+            return {"identified_product": product_name, "details": result_data}
         else:
-            result_data["firestore_error"] = "Firestore not initialized"
+            # Produto não existe, criar sugestão
+            print(f"Produto '{product_name}' não encontrado. Criando sugestão.")
+            suggestion_data = {
+                "term": product_name,
+                "source": "image_analysis",
+                "status": "pending",
+                "created_at": firestore.SERVER_TIMESTAMP,
+                "task_id": task_id
+            }
+            firestore_db.collection('product_suggestions').add(suggestion_data)
 
-        publish_event('resultados_ia', 'ImageAnalysisResult', task.get('task_id'), result_data)
-
-        return {"identified_product": product_name, "details": result_data}
+            result_data = {
+                "task_id": task_id,
+                "suggestion_term": product_name,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "status": "suggestion_created"
+            }
+            publish_event('resultados_ia', 'ImageAnalysisSuggestion', task_id, result_data)
+            return {"suggestion_created": product_name, "details": result_data}
 
     except Exception as e:
         print(f"Erro na análise de imagem: {e}")
@@ -261,6 +278,41 @@ def consume_tasks():
         return jsonify({"error": str(e)}), 500
 
     return jsonify({"status": "ok", "messages_processed": messages_processed, "results": results}), 200
+
+@app.route('/api/agents/suggestions', methods=['GET'])
+def get_pending_suggestions():
+    # Protegendo o endpoint, apenas usuários autenticados podem acessar
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({"error": "Authorization header missing"}), 401
+    try:
+        id_token = auth_header.split('Bearer ')[1]
+        auth.verify_id_token(id_token)
+    except Exception as e:
+        return jsonify({"error": f"Invalid or expired token: {str(e)}"}), 401
+
+    firestore_db = get_db()
+    if not firestore_db:
+        return jsonify({"error": "Firestore not initialized"}), 503
+
+    try:
+        suggestions_ref = firestore_db.collection('product_suggestions')
+        pending_query = suggestions_ref.where('status', '==', 'pending').order_by('created_at')
+        docs = pending_query.stream()
+        
+        suggestions = []
+        for doc in docs:
+            suggestion_data = doc.to_dict()
+            suggestion_data['id'] = doc.id
+            # Garantir que o timestamp seja serializável
+            if 'created_at' in suggestion_data and hasattr(suggestion_data['created_at'], 'isoformat'):
+                 suggestion_data['created_at'] = suggestion_data['created_at'].isoformat()
+            suggestions.append(suggestion_data)
+            
+        return jsonify(suggestions), 200
+    except Exception as e:
+        print(f"Erro ao buscar sugestões: {e}")
+        return jsonify({"error": f"Erro ao buscar sugestões: {e}"}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
