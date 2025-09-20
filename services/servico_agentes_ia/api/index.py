@@ -314,6 +314,39 @@ def get_pending_suggestions():
         print(f"Erro ao buscar sugestões: {e}")
         return jsonify({"error": f"Erro ao buscar sugestões: {e}"}), 500
 
+@app.route('/api/agents/suggestions/<suggestion_id>/reject', methods=['PUT'])
+def reject_suggestion(suggestion_id):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({"error": "Authorization header missing"}), 401
+    try:
+        id_token = auth_header.split('Bearer ')[1]
+        auth.verify_id_token(id_token)
+    except Exception as e:
+        return jsonify({"error": f"Invalid or expired token: {str(e)}"}), 401
+
+    firestore_db = get_db()
+    if not firestore_db:
+        return jsonify({"error": "Firestore not initialized"}), 503
+
+    try:
+        suggestion_ref = firestore_db.collection('product_suggestions').document(suggestion_id)
+        suggestion_doc = suggestion_ref.get()
+
+        if not suggestion_doc.exists:
+            return jsonify({"error": "Sugestão não encontrada."}), 404
+
+        # Atualiza o status para 'rejected'
+        suggestion_ref.update({'status': 'rejected', 'updated_at': firestore.SERVER_TIMESTAMP})
+
+        # Publica evento Kafka
+        publish_event('resultados_ia', 'SuggestionRejected', suggestion_id, {'status': 'rejected'})
+
+        return jsonify({"message": "Sugestão rejeitada com sucesso."}), 200
+    except Exception as e:
+        print(f"Erro ao rejeitar sugestão: {e}")
+        return jsonify({"error": f"Erro ao rejeitar sugestão: {e}"}), 500
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     # Attempt to initialize all clients
