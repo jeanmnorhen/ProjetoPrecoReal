@@ -67,7 +67,7 @@ export default function ImageSearchPage() {
       try {
         // For simplicity, we're calling the consume endpoint directly.
         // In a real app, this would be an API Gateway endpoint that triggers the Kafka event.
-        fetch("https://servicoagentes-1ymihk5kc-jeanmnorhens-projects.vercel.app/api/agents/consume", {
+        const response = await fetch("https://servicoagentes-1ymihk5kc-jeanmnorhens-projects.vercel.app/api/agents/consume", {
           method: "POST",
           headers: {
             "accept": "*/*",
