@@ -1,193 +1,162 @@
 name: CI/CD de Microsserviços e Frontend
 
-  on:
-    push:
-      branches:
-        - master
-      paths:
-        - 'services/**'
-        - 'frontend-tester/**'
-  jobs:
-    deploy-microservices:
-      runs-on: ubuntu-latest
-      outputs:
-        # Saídas dinâmicas para as URLs dos serviços implantados
-        servico_usuarios_url: ${{ steps.deploy_servico_usuarios.outputs.url }}
-        servico_busca_url: ${{ steps.deploy_servico_busca.outputs.url }}
-        servico_monitoramento_url: ${{ steps.deploy_servico_monitoramento.outputs.url 
-  }}
-        servico_agentes_ia_url: ${{ steps.deploy_servico_agentes_ia.outputs.url }}
-        servico_lojas_url: ${{ steps.deploy_servico_lojas.outputs.url }}
-        servico_ofertas_url: ${{ steps.deploy_servico_ofertas.outputs.url }}
-        servico_produtos_url: ${{ steps.deploy_servico_produtos.outputs.url }}
-        servico_healthcheck_url: ${{ steps.deploy_servico_healthcheck.outputs.url }}
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'services/**'
+      - 'frontend-tester/**'
 
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
-          with:
-            fetch-depth: 0 # Necessário para git diff
+jobs:
+  deploy-microservices:
+    runs-on: ubuntu-latest
+    outputs:
+      servico_usuarios_url: ${{ steps.deploy_servico_usuarios.outputs.url }}
+      servico_busca_url: ${{ steps.deploy_servico_busca.outputs.url }}
+      servico_monitoramento_url: ${{ steps.deploy_servico_monitoramento.outputs.url }}
+      servico_agentes_ia_url: ${{ steps.deploy_servico_agentes_ia.outputs.url }}
+      servico_lojas_url: ${{ steps.deploy_servico_lojas.outputs.url }}
+      servico_ofertas_url: ${{ steps.deploy_servico_ofertas.outputs.url }}
+      servico_produtos_url: ${{ steps.deploy_servico_produtos.outputs.url }}
+      servico_healthcheck_url: ${{ steps.deploy_servico_healthcheck.outputs.url }}
 
-        - name: Install Dependencies
-          run: |
-            npm install -g vercel@latest
-            sudo apt-get update && sudo apt-get install -y jq
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-        # --- Função para deploy de um microsserviço ---
-        # Esta função verifica se há alterações no diretório do serviço e, se houver, 
-  o implanta.
-        # Ela retorna a URL do deploy como uma saída.
-        - name: Deploy Microservice
-          id: deploy_servico_usuarios
-          uses: ./.github/actions/deploy-service # Reutiliza a action customizada
-          with:
-            service_path: services/servico-usuarios
-            vercel_project_name: servico-usuarios
-            vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
-            vercel_token: ${{ secrets.VERCEL_TOKEN }}
+      - name: Install Dependencies
+        run: |
+          npm install -g vercel@latest
+          sudo apt-get update && sudo apt-get install -y jq
 
-        - name: Deploy Microservice
-          id: deploy_servico_busca
-          uses: ./.github/actions/deploy-service
-          with:
-            service_path: services/servico-busca
-            vercel_project_name: servico-busca
-            vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
-            vercel_token: ${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy Microservice - servico-usuarios
+        id: deploy_servico_usuarios
+        uses: ./.github/actions/deploy-service
+        with:
+          service_path: services/servico-usuarios
+          vercel_project_name: servico-usuarios
+          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
-        - name: Deploy Microservice
-          id: deploy_servico_monitoramento
-          uses: ./.github/actions/deploy-service
-          with:
-            service_path: services/servico-monitoramento
-            vercel_project_name: servico-monitoramento
-            vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
-            vercel_token: ${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy Microservice - servico-busca
+        id: deploy_servico_busca
+        uses: ./.github/actions/deploy-service
+        with:
+          service_path: services/servico-busca
+          vercel_project_name: servico-busca
+          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
-        - name: Deploy Microservice
-          id: deploy_servico_agentes_ia
-          uses: ./.github/actions/deploy-service
-          with:
-            service_path: services/servico_agentes_ia
-            vercel_project_name: servicoagentes
-            vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
-            vercel_token: ${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy Microservice - servico-monitoramento
+        id: deploy_servico_monitoramento
+        uses: ./.github/actions/deploy-service
+        with:
+          service_path: services/servico-monitoramento
+          vercel_project_name: servico-monitoramento
+          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
-        - name: Deploy Microservice
-          id: deploy_servico_lojas
-          uses: ./.github/actions/deploy-service
-          with:
-            service_path: services/servico_lojas
-            vercel_project_name: servicolojas
-            vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
-            vercel_token: ${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy Microservice - servico-agentes-ia
+        id: deploy_servico_agentes_ia
+        uses: ./.github/actions/deploy-service
+        with:
+          service_path: services/servico_agentes_ia
+          vercel_project_name: servicoagentes
+          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
-        - name: Deploy Microservice
-          id: deploy_servico_ofertas
-          uses: ./.github/actions/deploy-service
-          with:
-            service_path: services/servico_ofertas
-            vercel_project_name: servicoofertas
-            vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
-            vercel_token: ${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy Microservice - servico-lojas
+        id: deploy_servico_lojas
+        uses: ./.github/actions/deploy-service
+        with:
+          service_path: services/servico_lojas
+          vercel_project_name: servicolojas
+          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
-        - name: Deploy Microservice
-          id: deploy_servico_produtos
-          uses: ./.github/actions/deploy-service
-          with:
-            service_path: services/servico-produtos
-            vercel_project_name: servico-produtos
-            vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
-            vercel_token: ${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy Microservice - servico-ofertas
+        id: deploy_servico_ofertas
+        uses: ./.github/actions/deploy-service
+        with:
+          service_path: services/servico_ofertas
+          vercel_project_name: servicoofertas
+          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
-        - name: Deploy Microservice
-          id: deploy_servico_healthcheck
-          uses: ./.github/actions/deploy-service
-          with:
-            service_path: services/servico_healthcheck
-            vercel_project_name: servico-healthcheck
-            vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
-            vercel_token: ${{ secrets.VERCEL_TOKEN }}
+      - name: Deploy Microservice - servico-produtos
+        id: deploy_servico_produtos
+        uses: ./.github/actions/deploy-service
+        with:
+          service_path: services/servico-produtos
+          vercel_project_name: servico-produtos
+          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
-    update-frontend-and-deploy:
-      runs-on: ubuntu-latest
-      needs: deploy-microservices # Garante que este job só rode após os deploys dos 
-  microsserviços
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v4
+      - name: Deploy Microservice - servico-healthcheck
+        id: deploy_servico_healthcheck
+        uses: ./.github/actions/deploy-service
+        with:
+          service_path: services/servico_healthcheck
+          vercel_project_name: servico-healthcheck
+          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }} 
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
-        - name: Install Vercel CLI
-          run: npm install -g vercel@latest
+  update-frontend-and-deploy:
+    runs-on: ubuntu-latest
+    needs: deploy-microservices
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-        - name: Update Frontend Environment Variables on Vercel
-          run: |
-            # Define o ID do projeto frontend
-            FRONTEND_PROJECT_ID="${{ secrets.VERCEL_PROJECT_ID_FRONTEND }}"
-            ORG_ID="${{ secrets.VERCEL_ORG_ID }}"
-            VERCEL_TOKEN="${{ secrets.VERCEL_TOKEN }}"
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
 
-            # Mapeamento de saídas do job anterior para variáveis de ambiente do 
-  frontend
-            declare -A SERVICE_URLS
-            SERVICE_URLS["NEXT_PUBLIC_USERS_API_URL"]="${{ 
-  needs.deploy-microservices.outputs.servico_usuarios_url }}"
-            SERVICE_URLS["NEXT_PUBLIC_SEARCH_API_URL"]="${{ 
-  needs.deploy-microservices.outputs.servico_busca_url }}"
-            SERVICE_URLS["NEXT_PUBLIC_MONITORING_API_URL"]="${{ 
-  needs.deploy-microservices.outputs.servico_monitoramento_url }}"
-            SERVICE_URLS["NEXT_PUBLIC_AI_API_URL"]="${{ 
-  needs.deploy-microservices.outputs.servico_agentes_ia_url }}"
-            SERVICE_URLS["NEXT_PUBLIC_STORES_API_URL"]="${{ 
-  needs.deploy-microservices.outputs.servico_lojas_url }}"
-            SERVICE_URLS["NEXT_PUBLIC_OFFERS_API_URL"]="${{ 
-  needs.deploy-microservices.outputs.servico_ofertas_url }}"
-            SERVICE_URLS["NEXT_PUBLIC_PRODUCTS_API_URL"]="${{ 
-  needs.deploy-microservices.outputs.servico_produtos_url }}"
-            SERVICE_URLS["NEXT_PUBLIC_HEALTHCHECK_API_URL"]="${{ 
-  needs.deploy-microservices.outputs.servico_healthcheck_url }}"
+      - name: Update Frontend Environment Variables on Vercel
+        run: |
+          FRONTEND_PROJECT_ID="${{ secrets.VERCEL_PROJECT_ID_FRONTEND }}"
+          ORG_ID="${{ secrets.VERCEL_ORG_ID }}"
+          VERCEL_TOKEN="${{ secrets.VERCEL_TOKEN }}"
 
-            # Itera sobre as URLs e atualiza as variáveis de ambiente na Vercel
-            for ENV_VAR_NAME in "${!SERVICE_URLS[@]}"; do
-              URL="${SERVICE_URLS[$ENV_VAR_NAME]}"
-              if [ -n "$URL" ]; then # Verifica se a URL não está vazia (ou seja, o 
-  serviço foi implantado)
-                echo "Atualizando variável de ambiente Vercel: $ENV_VAR_NAME com URL: 
-  $URL"
-                vercel env add "$ENV_VAR_NAME" "$URL" --scope "$ORG_ID" --project 
-  "$FRONTEND_PROJECT_ID" --token "$VERCEL_TOKEN" --yes
-              else
-                echo "Variável de ambiente $ENV_VAR_NAME não atualizada, pois o 
-  serviço correspondente não foi implantado."
-              fi
-            done
+          declare -A SERVICE_URLS
+          SERVICE_URLS["NEXT_PUBLIC_USERS_API_URL"]="${{ needs.deploy-microservices.outputs.servico_usuarios_url }}"
+          SERVICE_URLS["NEXT_PUBLIC_SEARCH_API_URL"]="${{ needs.deploy-microservices.outputs.servico_busca_url }}"
+          SERVICE_URLS["NEXT_PUBLIC_MONITORING_API_URL"]="${{ needs.deploy-microservices.outputs.servico_monitoramento_url }}"
+          SERVICE_URLS["NEXT_PUBLIC_AI_API_URL"]="${{ needs.deploy-microservices.outputs.servico_agentes_ia_url }}"
+          SERVICE_URLS["NEXT_PUBLIC_STORES_API_URL"]="${{ needs.deploy-microservices.outputs.servico_lojas_url }}"
+          SERVICE_URLS["NEXT_PUBLIC_OFFERS_API_URL"]="${{ needs.deploy-microservices.outputs.servico_ofertas_url }}"
+          SERVICE_URLS["NEXT_PUBLIC_PRODUCTS_API_URL"]="${{ needs.deploy-microservices.outputs.servico_produtos_url }}"
+          SERVICE_URLS["NEXT_PUBLIC_HEALTHCHECK_API_URL"]="${{ needs.deploy-microservices.outputs.servico_healthcheck_url }}"
 
-        - name: Install Frontend Dependencies
-          run: npm install
-          working-directory: frontend-tester
+          for ENV_VAR_NAME in "${!SERVICE_URLS[@]}"; do
+            URL="${SERVICE_URLS[$ENV_VAR_NAME]}"
+            if [ -n "$URL" ]; then
+              echo "Atualizando variável de ambiente Vercel: $ENV_VAR_NAME com URL: $URL"
+              vercel env add "$ENV_VAR_NAME" "$URL" --scope "$ORG_ID" --project "$FRONTEND_PROJECT_ID" --token "$VERCEL_TOKEN" --yes
+            else
+              echo "Variável de ambiente $ENV_VAR_NAME não atualizada, pois o serviço correspondente não foi implantado."
+            fi
+          done
 
-        - name: Build Frontend
-          run: npm run build
-          working-directory: frontend-tester
-          env:
-            NEXT_PUBLIC_USERS_API_URL: ${{ 
-  needs.deploy-microservices.outputs.servico_usuarios_url }}
-            NEXT_PUBLIC_SEARCH_API_URL: ${{ 
-  needs.deploy-microservices.outputs.servico_busca_url }}
-            NEXT_PUBLIC_MONITORING_API_URL: ${{ 
-  needs.deploy-microservices.outputs.servico_monitoramento_url }}
-            NEXT_PUBLIC_AI_API_URL: ${{ 
-  needs.deploy-microservices.outputs.servico_agentes_ia_url }}
-            NEXT_PUBLIC_STORES_API_URL: ${{ 
-  needs.deploy-microservices.outputs.servico_lojas_url }}
-            NEXT_PUBLIC_OFFERS_API_URL: ${{ 
-  needs.deploy-microservices.outputs.servico_ofertas_url }}
-            NEXT_PUBLIC_PRODUCTS_API_URL: ${{ 
-  needs.deploy-microservices.outputs.servico_produtos_url }}
-            NEXT_PUBLIC_HEALTHCHECK_API_URL: ${{ 
-  needs.deploy-microservices.outputs.servico_healthcheck_url }}
+      - name: Install Frontend Dependencies
+        run: npm install
+        working-directory: frontend-tester
 
-        - name: Deploy Frontend to Vercel
-          run: vercel deploy --prebuilt --prod --token ${{ secrets.VERCEL_TOKEN }} 
-  --scope ${{ secrets.VERCEL_ORG_ID }} --confirm
-          working-directory: frontend-tester
+      - name: Build Frontend
+        run: npm run build
+        working-directory: frontend-tester
+        env:
+          NEXT_PUBLIC_USERS_API_URL: ${{ needs.deploy-microservices.outputs.servico_usuarios_url }}
+          NEXT_PUBLIC_SEARCH_API_URL: ${{ needs.deploy-microservices.outputs.servico_busca_url }}
+          NEXT_PUBLIC_MONITORING_API_URL: ${{ needs.deploy-microservices.outputs.servico_monitoramento_url }}
+          NEXT_PUBLIC_AI_API_URL: ${{ needs.deploy-microservices.outputs.servico_agentes_ia_url }}
+          NEXT_PUBLIC_STORES_API_URL: ${{ needs.deploy-microservices.outputs.servico_lojas_url }}
+          NEXT_PUBLIC_OFFERS_API_URL: ${{ needs.deploy-microservices.outputs.servico_ofertas_url }}
+          NEXT_PUBLIC_PRODUCTS_API_URL: ${{ needs.deploy-microservices.outputs.servico_produtos_url }}
+          NEXT_PUBLIC_HEALTHCHECK_API_URL: ${{ needs.deploy-microservices.outputs.servico_healthcheck_url }}
+
+      - name: Deploy Frontend to Vercel
+        run: vercel deploy --prebuilt --prod --token ${{ secrets.VERCEL_TOKEN }} --scope ${{ secrets.VERCEL_ORG_ID }} --confirm
+        working-directory: frontend-tester
