@@ -11,7 +11,7 @@ interface Store {
   address: string;
   store_category: string;
   description: string;
-  location?: { latitude?: number; longitude?: number }; // Allow undefined for lat/lon
+  location?: { latitude?: number; longitude?: number }; // Allow  undefined for lat/lon
 }
 
 const STORES_API_URL = process.env.NEXT_PUBLIC_STORES_API_URL;
