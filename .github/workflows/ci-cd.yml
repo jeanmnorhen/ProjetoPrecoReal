@@ -23,13 +23,10 @@ jobs:
       servico_healthcheck_url: ${{ steps.deploy_servico_healthcheck.outputs.url }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Necessário para git diff
-
-      - name: Install Vercel CLI
-        run: npm install -g vercel@latest
+      - name: Install Dependencies
+        run: |
+          npm install -g vercel@latest
+          sudo apt-get update && sudo apt-get install -y jq
 
       # --- Função para deploy de um microsserviço ---
       # Esta função verifica se há alterações no diretório do serviço e, se houver, o implanta.
@@ -116,7 +113,7 @@ jobs:
       - name: Install Vercel CLI
         run: npm install -g vercel@latest
 
-      - name: Update Frontend Environment Variables
+      - name: Update Frontend Environment Variables on Vercel
         run: |
           # Define o ID do projeto frontend
           FRONTEND_PROJECT_ID="${{ secrets.VERCEL_PROJECT_ID_FRONTEND }}"
@@ -144,6 +141,23 @@ jobs:
               echo "Variável de ambiente $ENV_VAR_NAME não atualizada, pois o serviço correspondente não foi implantado."
             fi
           done
+
+      - name: Install Frontend Dependencies
+        run: npm install
+        working-directory: frontend-tester
+
+      - name: Build Frontend
+        run: npm run build
+        working-directory: frontend-tester
+        env:
+          NEXT_PUBLIC_USERS_API_URL: ${{ needs.deploy-microservices.outputs.servico_usuarios_url }}
+          NEXT_PUBLIC_SEARCH_API_URL: ${{ needs.deploy-microservices.outputs.servico_busca_url }}
+          NEXT_PUBLIC_MONITORING_API_URL: ${{ needs.deploy-microservices.outputs.servico_monitoramento_url }}
+          NEXT_PUBLIC_AI_API_URL: ${{ needs.deploy-microservices.outputs.servico_agentes_ia_url }}
+          NEXT_PUBLIC_STORES_API_URL: ${{ needs.deploy-microservices.outputs.servico_lojas_url }}
+          NEXT_PUBLIC_OFFERS_API_URL: ${{ needs.deploy-microservices.outputs.servico_ofertas_url }}
+          NEXT_PUBLIC_PRODUCTS_API_URL: ${{ needs.deploy-microservices.outputs.servico_produtos_url }}
+          NEXT_PUBLIC_HEALTHCHECK_API_URL: ${{ needs.deploy-microservices.outputs.servico_healthcheck_url }}
 
       - name: Deploy Frontend to Vercel
         run: vercel deploy --prebuilt --prod --token ${{ secrets.VERCEL_TOKEN }} --scope ${{ secrets.VERCEL_ORG_ID }} --confirm
