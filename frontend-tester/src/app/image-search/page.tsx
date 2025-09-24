@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext"; // Ajuste o caminho conforme necessário
-import { useAuth } from "../../context/AuthContext";
 import AuthForm from "../../components/AuthForm";
 
 const AI_API_URL = process.env.NEXT_PUBLIC_AI_API_URL; // URL for servico-agentes-ia

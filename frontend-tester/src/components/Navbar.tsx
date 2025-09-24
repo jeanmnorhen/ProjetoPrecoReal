@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
-import { auth } from "../lib/firebase";
+import { auth } from "../../lib/firebase";
 import { useRouter } from "next/navigation";
 
 export default function Navbar() {
