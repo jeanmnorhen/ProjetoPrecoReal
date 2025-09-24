@@ -58,7 +58,7 @@ runs:
         echo "---------------------------------"
         
         # Extrai a URL do deploy da saída
-        DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep 'https://' | tail -n 1)
+        DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep 'vercel.app' | tail -n 1)
         
         if [ -z "$DEPLOY_URL" ] || [ "$DEPLOY_URL" == "null" ]; then
           echo "Erro: O comando 'vercel deploy' não retornou uma URL de deploy válida na saída."
