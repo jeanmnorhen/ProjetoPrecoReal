@@ -1,9 +1,10 @@
 name: CI/CD de Microsserviços e Frontend
 
-  on:
-    push:
-      branches:
-        - master
+on:
+  push:
+    branches:
+      - master
+      - fix/ci-cd-pipeline-corrections
       paths:
         - 'services/**'
         - 'frontend-tester/**'
