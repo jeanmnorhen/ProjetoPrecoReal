@@ -2,6 +2,17 @@ import pytest
 from unittest.mock import patch, MagicMock
 from datetime import datetime, timezone
 from firebase_admin import firestore
+import os
+import sys
+
+# Add the service's root directory to the path to allow for relative imports
+service_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if service_root not in sys.path:
+    sys.path.insert(0, service_root)
+
+# Now we can import the app and its dependencies
+from api import index as api_index
+
 
 @pytest.fixture
 def client():
@@ -17,6 +28,7 @@ def mock_env_vars():
         "KAFKA_BOOTSTRAP_SERVER": "dummy_kafka_server",
         "KAFKA_API_KEY": "dummy_kafka_key",
         "KAFKA_API_SECRET": "dummy_kafka_secret",
+        "SERVICO_USUARIOS_URL": "http://mock-user-service",
     }):
         yield
 
@@ -33,14 +45,17 @@ def mock_all_dependencies():
          patch.object(api_index, 'auth') as mock_auth, \
          patch.object(api_index, 'producer', mock_kafka_producer_instance), \
          patch.object(api_index, 'publish_event') as mock_publish_event, \
+         patch.object(api_index, 'check_permission', return_value=(True, "ok")) as mock_check_permission, \
          patch.object(api_index, 'firebase_init_error', None), \
          patch.object(api_index, 'kafka_producer_init_error', None):
+
 
         yield {
             "db": mock_db,
             "auth": mock_auth,
             "producer": mock_kafka_producer_instance,
-            "publish_event": mock_publish_event
+            "publish_event": mock_publish_event,
+            "check_permission": mock_check_permission
         }
 
 def test_create_offer_success(client, mock_all_dependencies):
@@ -100,7 +115,8 @@ def test_create_offer_success(client, mock_all_dependencies):
     assert actual_offer_data['start_date'] == new_offer_data['start_date']
     assert actual_offer_data['end_date'] == new_offer_data['end_date']
     assert actual_offer_data['offer_type'] == new_offer_data['offer_type']
-    assert actual_offer_data['owner_uid'] == user_uid
+    # owner_uid is no longer stored on the offer, permission is checked via service call
+    # assert actual_offer_data['owner_uid'] == user_uid
     assert actual_offer_data['store_id'] == store_id
     assert isinstance(actual_offer_data['created_at'], type(firestore.SERVER_TIMESTAMP))
     assert isinstance(actual_offer_data['updated_at'], type(firestore.SERVER_TIMESTAMP))
@@ -182,6 +198,7 @@ def test_update_offer_unauthorized(client, mock_all_dependencies):
     headers = {"Authorization": f"Bearer {fake_token}"}
     
     mock_all_dependencies["auth"].verify_id_token.return_value = {'uid': unauthorized_uid}
+    mock_all_dependencies["check_permission"].return_value = (False, "not authorized")
 
     update_data = {"offer_price": 69.99}
     response = client.put('/api/offers/test_offer_id', headers=headers, json=update_data)
@@ -227,6 +244,7 @@ def test_delete_offer_unauthorized(client, mock_all_dependencies):
     headers = {"Authorization": f"Bearer {fake_token}"}
     
     mock_all_dependencies["auth"].verify_id_token.return_value = {'uid': unauthorized_uid}
+    mock_all_dependencies["check_permission"].return_value = (False, "not authorized")
 
     response = client.delete('/api/offers/test_offer_id', headers=headers)
 
@@ -256,7 +274,8 @@ def test_health_check_all_ok(client, mock_all_dependencies):
 
 def test_health_check_kafka_error(client, mock_all_dependencies):
     """Test health check when Kafka producer is not initialized."""
-    with patch('api.index.producer', new=None):
+    with patch('api.index.producer', new=None), \
+         patch.object(api_index, 'kafka_producer_init_error', "Kafka failed to initialize"):
         response = client.get('/api/health')
         assert response.status_code == 503
         assert response.json["dependencies"]["kafka_producer"] == "error"

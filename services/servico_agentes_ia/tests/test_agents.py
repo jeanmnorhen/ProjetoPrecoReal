@@ -165,8 +165,8 @@ def test_consume_tasks_success_image_analysis(client, mock_all_dependencies):
     assert response.status_code == 200
     assert response.json['status'] == 'ok'
     assert response.json['messages_processed'] == 1
-    assert response.json['results'][0]['identified_product'] == 'Produto Teste'
+    assert response.json['results'][0]['suggestion_created'] == 'Produto Teste'
     
     mock_gemini_model.generate_content.assert_called_once()
-    mock_db.collection.return_value.document.return_value.set.assert_called_once()
+    mock_db.collection.return_value.add.assert_called_once()
     mock_producer.produce.assert_called_once()

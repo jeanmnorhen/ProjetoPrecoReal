@@ -13,19 +13,48 @@ import base64
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=['https://frontend-tester-1foc8lpkl-jeanmnorhens-projects.vercel.app'])
 
-# --- Variáveis globais para  errosde inicialização --- 
-
+# --- Global Dependencies (initialized to None) ---
+db = None
+producer = None
 firebase_init_error = None
 kafka_producer_init_error = None
 
 # --- Funções Auxiliares  ---
+
+def delivery_report(err, msg):
+    if err is not None:
+        print(f'Falha ao entregar mensagem Kafka: {err}')
+    else:
+        print(f'Mensagem Kafka entregue em {msg.topic()} [{msg.partition()}]')
+
+def publish_event(topic, event_type, product_id, data, changes=None):
+    if not producer:
+        print("Produtor Kafka não está inicializado. Evento não publicado.")
+        return
+    event = {
+        "event_type": event_type,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "product_id": product_id,
+        "data": data,
+        "source_service": "servico-produtos"
+    }
+    if changes:
+        event["changes"] = changes
+    try:
+        event_value = json.dumps(event, default=str)
+        producer.produce(topic, key=product_id, value=event_value, callback=delivery_report)
+        producer.poll(0)
+        print(f"Evento '{event_type}' para o produto {product_id} publicado no tópico {topic}.")
+    except Exception as e:
+        print(f"Erro ao publicar evento Kafka: {e}")
+
 
 def check_permission(user_id, store_id):
     """Chama o servico-usuarios para verificar se um usuário tem permissão para gerenciar uma loja."""
     servico_usuarios_url = os.environ.get('SERVICO_USUARIOS_URL')
     if not servico_usuarios_url:
         print("ERRO: SERVICO_USUARIOS_URL não configurado.")
-        return False, {"error": "URL do serviço de permissões não configurada."
+        return False, {"error": "URL do serviço de permissões não configurada."}
 
     try:
         # O token do usuário original não é necessário aqui, pois usamos o segredo interno.
@@ -43,7 +72,8 @@ def check_permission(user_id, store_id):
         return False, {"error": "Falha ao contatar o serviço de permissões."}
 
 
-@app.route('/api/products', methods=['GET'])def list_all_products():
+@app.route('/api/products', methods=['GET'])
+def list_all_products():
     if not db:
         return jsonify({"error": "Dependência do Firestore não inicializada."}), 503
 

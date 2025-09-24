@@ -5,9 +5,12 @@ import os
 import sys
 import json
 
-# Import the module directly to patch its attributes
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
-import services.servico_monitoramento.api.index as api_index
+# Add the service's root directory to the path to allow for relative imports
+service_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if service_root not in sys.path:
+    sys.path.insert(0, service_root)
+
+from api import index as api_index
 
 @pytest.fixture(autouse=True)
 def mock_env_vars():
@@ -49,7 +52,7 @@ def mock_all_dependencies():
 @pytest.fixture
 def client():
     """A test client for the app."""
-    from services.servico_monitoramento.api.index import app
+    from api.index import app
     app.config['TESTING'] = True
     with app.test_client() as client:
         yield client
@@ -89,7 +92,8 @@ def test_health_check_influxdb_error(client, mock_all_dependencies):
 
 def test_health_check_kafka_error(client, mock_all_dependencies):
     """Test health check when Kafka consumer is not initialized."""
-    with patch.object(api_index, 'kafka_consumer_instance', new=None):
+    with patch.object(api_index, 'kafka_consumer_instance', new=None), \
+         patch.object(api_index, 'kafka_consumer_init_error', "Kafka failed to initialize"):
         response = client.get('/api/health')
         assert response.status_code == 503
         assert response.json["dependencies"]["kafka_consumer"] == "error"

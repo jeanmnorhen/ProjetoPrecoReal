@@ -175,6 +175,27 @@ def publish_event(topic, event_type, store_id, data, changes=None):
     except Exception as e:
         print(f"Erro ao publicar evento Kafka: {e}")
 
+def check_permission(user_id, store_id):
+    """Chama o servico-usuarios para verificar se um usuário tem permissão para gerenciar uma loja."""
+    servico_usuarios_url = os.environ.get('SERVICO_USUARIOS_URL')
+    if not servico_usuarios_url:
+        print("ERRO: SERVICO_USUARIOS_URL não configurado.")
+        return False, {"error": "URL do serviço de permissões não configurada."}
+
+    try:
+        response = requests.get(
+            f"{servico_usuarios_url}/api/permissions/check",
+            params={'user_id': user_id, 'store_id': store_id},
+            timeout=5
+        )
+        if response.status_code == 200:
+            return response.json().get('allow', False), response.json()
+        else:
+            return False, response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao contatar o serviço de permissões: {e}")
+        return False, {"error": "Falha ao contatar o serviço de permissões."}
+
 # --- Rotas da API ---
 
 # Final workflow trigger test
@@ -320,8 +341,9 @@ def update_store(store_id):
         if not store_doc.exists:
             return jsonify({"error": "Loja não encontrada."}), 404
         
-        if store_doc.to_dict().get('owner_uid') != uid:
-            return jsonify({"error": "User is not authorized to update this store"}), 403
+        allowed, reason = check_permission(uid, store_id)
+        if not allowed:
+            return jsonify({"error": "User is not authorized to update this store", "details": reason}), 403
 
         firestore_data = update_data.copy()
         location_data = firestore_data.pop('location', None)
@@ -377,8 +399,9 @@ def delete_store(store_id):
         if not store_doc.exists:
             return jsonify({"error": "Loja não encontrada."}), 404
         
-        if store_doc.to_dict().get('owner_uid') != uid:
-            return jsonify({"error": "User is not authorized to delete this store"}), 403
+        allowed, reason = check_permission(uid, store_id)
+        if not allowed:
+            return jsonify({"error": "User is not authorized to delete this store", "details": reason}), 403
 
         location_record = db_session.query(StoreLocation).filter_by(store_id=store_id).first()
         if location_record:

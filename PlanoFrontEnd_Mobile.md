@@ -1,5 +1,18 @@
 # Plano de Implementação do Aplicativo Móvel (React Native)
 
+## Status Atual e Prontidão do Backend (Setembro/2025)
+
+**O backend está em estágio avançado e pronto para suportar o desenvolvimento de todas as funcionalidades descritas neste plano.**
+
+-   **APIs Prontas:** As APIs para gerenciamento de usuários, lojas, produtos e ofertas estão funcionais e alinhadas com a arquitetura de múltiplos papéis e lojas.
+-   **Lógica de Permissão Centralizada:** O `servico-usuarios` já contém a lógica para autenticação condicional de funcionários (geofence e turno) e para a seleção de lojas por parte de lojistas/funcionários, exatamente como previsto nas seções `StoreSelectionScreen` e `EmployeeDashboardScreen`.
+-   **Serviços de Apoio:** Os serviços de busca (`servico-busca`), análise de imagem (`servico-agentes-ia`) e monitoramento de preços (`servico-monitoramento`) estão operacionais para serem integrados ao frontend.
+
+-   **Ponto de Atenção:** Foi identificada uma falha de segurança no `servico-lojas` que precisa ser corrigida. As operações de `UPDATE` e `DELETE` de lojas não estão usando o sistema de permissão centralizado. Embora isso não impeça o início do desenvolvimento do frontend, a correção é crucial para a segurança geral do sistema.
+
+---
+
+
 ## 1. Visão Geral
 
 Este documento detalha o plano de desenvolvimento para o **Aplicativo Móvel** do projeto Preço Real, construído com **React Native**. O aplicativo atenderá a três perfis de usuários principais: **Consumidores**, **Lojistas** e **Funcionários**.

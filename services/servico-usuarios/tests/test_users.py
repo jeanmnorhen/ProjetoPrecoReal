@@ -2,9 +2,20 @@
 
 import pytest
 from pytest_mock import mocker
+from unittest.mock import MagicMock
 from datetime import datetime, timezone
 import os
+import sys
 from confluent_kafka import Producer
+
+# Add the service's root directory to the path to allow for relative imports
+service_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if service_root not in sys.path:
+    sys.path.insert(0, service_root)
+
+# Now we can import the app and its dependencies
+from api import index as api_index
+
 
 # Import a mock for the Point object that to_shape would create
 class MockPoint:
@@ -23,9 +34,9 @@ def mock_env_vars(mocker):
     mocker.patch.dict(os.environ, {
         "FIREBASE_ADMIN_SDK_BASE64": "mock_firebase_sdk_base64",
         "POSTGRES_POSTGRES_URL": "postgresql://user:password@host:port/database",
-        "KAFKA_BOOTSTRAP_SERVER": "",
-        "KAFKA_API_KEY": "",
-        "KAFKA_API_SECRET": "",
+        "KAFKA_BOOTSTRAP_SERVER": "dummy_kafka_server",
+        "KAFKA_API_KEY": "dummy_kafka_key",
+        "KAFKA_API_SECRET": "dummy_kafka_secret",
         "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION": "python",
     })
 
@@ -72,6 +83,8 @@ def postgis_mock_session(mocker):
     mock_sql_session = mocker.MagicMock()
     mock_location_record = MockUserLocation('test_user_123', 'POINT(-46.6 -23.5)')
     mock_sql_session.query.return_value.filter_by.return_value.first.return_value = mock_location_record
+    # Add mock for the health check query
+    mock_sql_session.execute.return_value = MagicMock()
     mocker.patch('api.index.db_session', mock_sql_session)
     return mock_sql_session
 

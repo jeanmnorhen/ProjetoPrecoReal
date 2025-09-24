@@ -221,21 +221,11 @@ def process_image_analysis(task):
 
 @app.route('/api/agents/consume', methods=['POST', 'GET'])
 def consume_tasks():
-    get_db() # Ensure Firebase is initialized
-    if not firebase_admin or not firebase_admin._apps:
-        return jsonify({"error": "Firebase Admin SDK not initialized."}), 500
-
+    # Security check for cron job, similar to other consumer services
     auth_header = request.headers.get('Authorization')
-    if not auth_header:
-        return jsonify({"error": "Authorization header missing"}), 401
-
-    try:
-        id_token = auth_header.split('Bearer ')[1]
-        decoded_token = auth.verify_id_token(id_token)
-        # You can access user_id with decoded_token['uid'] if needed
-        print(f"Firebase ID Token verified for user: {decoded_token['uid']}")
-    except Exception as e:
-        return jsonify({"error": f"Invalid or expired token: {str(e)}"}), 401
+    cron_secret = os.environ.get('CRON_SECRET')
+    if not cron_secret or auth_header != f'Bearer {cron_secret}':
+        return jsonify({"error": "Unauthorized"}), 401
 
     consumer = get_kafka_consumer()
     if not consumer:
