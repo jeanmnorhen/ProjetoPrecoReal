@@ -1,6 +1,6 @@
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from influxdb_client import InfluxDBClient, Point
@@ -95,7 +95,7 @@ def consume_and_write_prices():
                 
                 product_id = data.get('product_id')
                 offer_price = data.get('offer_price')
-                timestamp = event_data.get('timestamp', datetime.utcnow().isoformat())
+                timestamp = event_data.get('timestamp', datetime.now(timezone.utc).isoformat())
 
                 if product_id and offer_price is not None:
                     point = Point("offer_price") \

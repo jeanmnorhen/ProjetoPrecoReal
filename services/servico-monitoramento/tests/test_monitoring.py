@@ -113,12 +113,12 @@ def test_consume_and_write_prices_success(client, mock_all_dependencies):
     # Mock Kafka messages
     mock_msg1 = MagicMock()
     mock_msg1.error.return_value = None
-    mock_msg1.value.return_value = json.dumps({"data": {"product_id": "prod1", "offer_price": 10.50}, "timestamp": datetime.utcnow().isoformat()}).encode('utf-8')
+    mock_msg1.value.return_value = json.dumps({"data": {"product_id": "prod1", "offer_price": 10.50}, "timestamp": datetime.now(timezone.utc).isoformat()}).encode('utf-8')
     mock_msg1.topic.return_value = "eventos_ofertas"
 
     mock_msg2 = MagicMock()
     mock_msg2.error.return_value = None
-    mock_msg2.value.return_value = json.dumps({"data": {"product_id": "prod2", "offer_price": 20.75}, "timestamp": datetime.utcnow().isoformat()}).encode('utf-8')
+    mock_msg2.value.return_value = json.dumps({"data": {"product_id": "prod2", "offer_price": 20.75}, "timestamp": datetime.now(timezone.utc).isoformat()}).encode('utf-8')
     mock_msg2.topic.return_value = "eventos_ofertas"
 
     mock_kafka_consumer_instance.consume.return_value = [mock_msg1, mock_msg2]
