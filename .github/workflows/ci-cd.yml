@@ -102,7 +102,7 @@ jobs:
           echo "--- Vercel Deploy Output ---"
           echo "$DEPLOY_OUTPUT"
           echo "---------------------------------"
-          DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | tail -n 1)
+          DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep 'https://' | tail -n 1)
           if [ -z "$DEPLOY_URL" ] || [ "$DEPLOY_URL" == "null" ]; then
             echo "Erro: O comando 'vercel deploy' não retornou uma URL de deploy válida na saída."
             exit 1
