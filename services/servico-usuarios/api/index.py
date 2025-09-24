@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from flask import Flask, request, jsonify
 import base64
 
-# --- Importações de dependências - --
+# --- Importações de  dependências - --
 try:
     from firebase_admin import credentials, firestore, initialize_app, auth
     import firebase_admin

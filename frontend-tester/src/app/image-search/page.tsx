@@ -1,7 +1,8 @@
 // frontend-tester/src/app/image-search/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import Image from "next/image";
 import { useAuth } from "../../context/AuthContext"; // Ajuste o caminho conforme necessário
 import AuthForm from "../../components/AuthForm";
 
@@ -17,7 +18,7 @@ export default function ImageSearchPage() {
 
   const { idToken } = useAuth();
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!idToken) {
       console.error("No authentication token found. Please log in.");
       setError("No authentication token found. Please log in.");
@@ -134,7 +135,7 @@ export default function ImageSearchPage() {
           {imagePreview && (
             <div className="mt-4">
               <h3 className="text-lg font-semibold">Image Preview:</h3>
-              <img src={imagePreview} alt="Image Preview" className="mt-2 max-w-xs max-h-xs object-contain" />
+              <Image src={imagePreview} alt="Image Preview" width={200} height={200} className="mt-2 max-w-xs max-h-xs object-contain" />
             </div>
           )}
           <button
