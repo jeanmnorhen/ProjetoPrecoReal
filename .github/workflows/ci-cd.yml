@@ -88,12 +88,27 @@ jobs:
 
       - name: Deploy Microservice - servico-produtos
         id: deploy_servico_produtos
-        uses: ./.github/actions/deploy-service
-        with:
-          service_path: services/servico-produtos
-          vercel_project_name: servico-produtos
-          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel_token: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -e
+          set -o pipefail
+          cd services/servico-produtos
+          echo "--- Debugging Vercel CLI ---"
+          which vercel || { echo "Error: Vercel CLI not found."; exit 1; }
+          vercel --version || { echo "Error: Vercel CLI failed to get version."; exit 1; }
+          vercel whoami --token ${{ secrets.VERCEL_TOKEN }} || { echo "Error: Vercel CLI failed to authenticate. Check VERCEL_TOKEN permissions."; exit 1; }
+          echo "----------------------------"
+          echo "Running Vercel deploy for servico-produtos..."
+          DEPLOY_OUTPUT=$(vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --scope ${{ secrets.VERCEL_ORG_ID }} --yes 2> >(tee /dev/stderr))
+          echo "--- Vercel Deploy Output ---"
+          echo "$DEPLOY_OUTPUT"
+          echo "---------------------------------"
+          DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | tail -n 1)
+          if [ -z "$DEPLOY_URL" ] || [ "$DEPLOY_URL" == "null" ]; then
+            echo "Erro: O comando 'vercel deploy' não retornou uma URL de deploy válida na saída."
+            exit 1
+          fi
+          echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
+          echo "Deployed URL: $DEPLOY_URL"
 
       - name: Deploy Microservice - servico-healthcheck
         id: deploy_servico_healthcheck
