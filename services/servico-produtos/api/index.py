@@ -57,7 +57,7 @@ def check_permission(user_id, store_id):
         return False, {"error": "URL do serviço de permissões não configurada."}
 
     try:
-        # O token do  usuário original não é necessário aqui, pois usamos o segredo interno.
+        # O token do  usuário  original não é necessário aqui, pois usamos o segredo interno.
         response = requests.get(
             f"{servico_usuarios_url}/api/permissions/check",
             params={'user_id': user_id, 'store_id': store_id},
