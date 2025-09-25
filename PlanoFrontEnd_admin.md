@@ -1,88 +1,76 @@
-# Plano de Implementação do Aplicativo Móvel (React Native)
+# Plano de Desenvolvimento do Frontend - Dashboard Administrativo
 
 ## 1. Visão Geral
 
-Este documento detalha o plano de desenvolvimento para o **Aplicativo Móvel** do projeto Preço Real, construído com **React Native**. O aplicativo atenderá a três perfis de usuários principais: **Consumidores**, **Lojistas** e **Funcionários**.
+O painel administrativo será um dashboard centralizado, construído com Next.js e Tailwind CSS, projetado para fornecer aos administradores uma visão completa do ecossistema do "PREÇO REAL". O foco é monitorar a saúde da plataforma, gerenciar o catálogo de produtos e garantir a qualidade dos dados.
 
--   **Para Consumidores:** O foco é na descoberta de ofertas, busca de produtos (incluindo busca por imagem), e visualização de lojas em um mapa interativo.
--   **Para Lojistas:** O foco é no gerenciamento de **uma ou mais de suas lojas**, cadastro de produtos, publicação de ofertas e gestão de seus funcionários.
--   **Para Funcionários:** O foco é no gerenciamento de produtos e ofertas da loja para a qual trabalham, com acesso condicionado à sua localização e turno de trabalho.
+## 2. Autenticação
 
-## 2. Tecnologias
+- Acesso restrito a usuários com o status de `admin` no Firebase Authentication.
+- Utilização de um `Higher-Order Component` (HOC) `withAdminAuth` para proteger todas as rotas do dashboard.
 
--   **Framework:** React Native
--   **Navegação:** React Navigation
--   **Autenticação:** Firebase SDK
--   **Requisições HTTP:** Axios
--   **Estilização:** Styled Components ou React Native Paper (Material Design)
--   **Mapas:** `react-native-maps`
--   **Câmera:** `react-native-vision-camera` ou similar.
--   **Geolocalização em Background:** `react-native-background-geolocation` ou similar, para permitir a verificação de perímetro do funcionário.
--   **Gerenciamento de Estado:** React Context API ou Zustand.
+## 3. Estrutura de Páginas e Componentes
 
-## 3. Estrutura de Telas (Screens)
+### 3.1. Layout Principal (`/admin/layout.tsx`)
 
-### Telas Comuns
--   `LoginScreen`: Tela de autenticação.
--   `RegisterScreen`: Tela de cadastro, permitindo a escolha entre perfil "Consumidor" ou "Lojista".
--   `ProfileScreen`: Tela para visualizar e editar dados básicos do perfil.
+- **Navbar Superior:** Exibirá o logo, o nome do usuário logado e um botão de logout.
+- **Sidebar (Navegação Lateral):** Conterá links para as principais seções do dashboard:
+  - Dashboard
+  - Gestão de Críticas
+  - Catálogo de Produtos (Canônicos)
+  - Lojas
+  - Usuários
+  - Ofertas
 
-### Tela de Seleção (Lojista/Funcionário)
--   `StoreSelectionScreen`: Apresentada após o login para lojistas ou funcionários com múltiplas lojas. Permite selecionar a loja a ser gerenciada na sessão ou adicionar uma nova (apenas para lojistas).
+### 3.2. Página Principal (`/admin/dashboard`)
 
-### Telas do Consumidor
--   `OfferFeedScreen`: Tela principal com dois feeds de ofertas horizontais (Promoções e Ofertas Gerais).
--   `SearchScreen`: Com busca textual, filtros de categoria, ordenação e botão para busca por imagem.
--   `MapScreen`: Visualização de lojas e ofertas próximas.
--   `ProductDetailScreen`: Detalhes de um produto/oferta.
--   `StoreDetailScreen`: Detalhes de uma loja específica.
+Esta página fornecerá uma visão geral com widgets interativos.
 
-### Telas do Lojista (Contextuais à Loja Selecionada)
--   `ShopDashboardScreen`: Painel de controle principal, exibindo dados da **loja atualmente selecionada**.
--   `ManageStoreScreen`: Formulário para o lojista criar ou editar os dados da loja.
--   `ManageProductsScreen`: Interface para o lojista gerenciar o catálogo de produtos da loja.
--   `ManageOffersScreen`: Interface para o lojista criar e gerenciar as ofertas da loja.
--   `ManageEmployeesScreen`: Interface para gerenciar funcionários **da loja selecionada**.
+- **Componentes:**
+  - `StatCard`: Componente reutilizável para exibir métricas chave (ex: "Usuários Ativos", "Ofertas Criadas").
+  - `PriceTrendChart`: Gráfico de linhas (usando Recharts ou similar) para monitorar a média de preços de um produto selecionado ao longo do tempo. O admin poderá filtrar por produto e por região.
+  - `UsageChart`: Gráfico de barras ou linhas para visualizar a atividade dos usuários (ex: pesquisas por dia, produtos mais buscados).
 
-### Telas do Funcionário (Contextuais à Loja Selecionada)
--   `EmployeeDashboardScreen`: Painel de controle para o funcionário, contextual à **loja selecionada**. Exibe as opções de gerenciamento se as condições de acesso (local e turno) forem atendidas.
--   *Esta seção reutilizará as telas `ManageProductsScreen` e `ManageOffersScreen`.*
+### 3.3. Gestão de Críticas de Produtos (`/admin/criticas`)
 
-## 4. Plano de Implementação (Fases)
+Interface para gerenciar o feedback dos usuários sobre a qualidade dos dados dos produtos.
 
-### Fase 1: Estrutura Base e Autenticação
--   **Objetivo:** Configurar o ambiente e o fluxo de autenticação/navegação para todos os perfis.
--   **Passos:**
-    1.  Inicializar e configurar o projeto React Native.
-    2.  Integrar o Firebase SDK.
-    3.  Implementar as telas `LoginScreen` e `RegisterScreen`.
-    4.  Configurar a navegação principal.
-    5.  Implementar a lógica de redirecionamento pós-login: Consumidores vão para o feed. Lojistas/Funcionários com múltiplas lojas são direcionados para a `StoreSelectionScreen`. Lojistas/Funcionários com apenas uma loja vão direto para o dashboard respectivo.
+- **Componentes:**
+  - `CriticismQueueTable`: Tabela que exibe uma fila de produtos com críticas pendentes. Colunas: Produto, Tipo de Crítica (ex: "Foto errada"), Comentário do Usuário, Data.
+  - `CriticismResolutionModal`: Ao clicar em um item da fila, um modal será aberto para o administrador:
+    - Exibirá os dados atuais do produto canônico.
+    - Mostrará a sugestão/crítica do usuário.
+    - Permitirá ao admin **editar diretamente** os campos do produto canônico (descrição, foto, etc.) e salvar a alteração.
+    - Um botão para "Rejeitar" a crítica.
 
-### Fase 2: Funcionalidades do Consumidor
--   **Objetivo:** Desenvolver a experiência principal de descoberta de ofertas.
+### 3.4. Catálogo de Produtos Canônicos (`/admin/canonicos`)
 
-### Fase 3: Funcionalidades do Lojista (Contextual)
--   **Objetivo:** Criar as ferramentas de gerenciamento para os lojistas, considerando o contexto de múltiplas lojas.
--   **Passos:**
-    1.  **TDD:** Desenvolver a `StoreSelectionScreen` para listar as lojas do usuário e permitir a seleção.
-    2.  Garantir que todas as telas de gerenciamento (loja, produtos, ofertas, funcionários) operem no contexto da loja selecionada.
-    3.  **TDD:** Desenvolver as telas `ManageStoreScreen`, `ManageProductsScreen`, `ManageOffersScreen` e `ManageEmployeesScreen`.
+Gerenciamento completo do catálogo de produtos, que é a base para as ofertas dos lojistas.
 
-### Fase 4: Busca por Imagem (IA)
--   **Objetivo:** Implementar a funcionalidade de busca visual para o consumidor.
+- **Componentes:**
+  - `SearchAndFilterBar`: Barra com campo de busca textual e filtros por categoria.
+  - `CanonicalProductsTable`: Tabela com a lista de produtos canônicos. Colunas: Foto, Nome do Produto, Categoria, Código de Barras, Ações.
+  - `ProductFormModal`: Um modal para **criar** e **editar** produtos canônicos. O formulário conterá campos para:
+    - Nome do produto
+    - Descrição detalhada
+    - Categoria (seleção)
+    - Código de barras (EAN/UPC)
+    - Upload de imagem de alta qualidade.
+  - `AlertDialog`: Para confirmação antes de excluir um produto.
 
-### Fase 5: Funcionalidades do Funcionário
--   **Objetivo:** Implementar o painel condicional para o funcionário, considerando o contexto da loja selecionada.
--   **Passos:**
-    1.  **TDD:** Implementar a `EmployeeDashboardScreen` com a lógica de verificação de acesso.
-    2.  Integrar um serviço de geolocalização em background para verificar a posição do usuário contra o perímetro da **loja selecionada**.
-    3.  Implementar a lógica de verificação do turno de trabalho atual.
+### 3.5. Gestão de Lojas, Usuários e Ofertas
 
-### Fase 6: Testes, Refinamento e Publicação
--   **Objetivo:** Garantir a qualidade e preparar o aplicativo para o lançamento.
+As seções de Lojas (`/admin/lojas`), Usuários (`/admin/usuarios`) e Ofertas (`/admin/ofertas`) consistirão em páginas de CRUD (Criar, Ler, Atualizar, Deletar) mais simples, utilizando tabelas para listar os dados e modais para edição e criação.
 
-## 5. Próximos Passos
+- **Componentes reutilizáveis:**
+  - `DataTable`: Tabela genérica com funcionalidades de paginação e ordenação.
+  - `FormModal`: Modal genérico para formulários de edição/criação.
 
--   [ ] Iniciar a **Fase 1** para reconfigurar a autenticação e navegação.
--   [ ] Proceder com as fases de implementação, começando pela `StoreSelectionScreen`.
+## 4. Lógica e Estado
+
+- **Gerenciamento de Estado:** Utilização do `AuthContext` para informações de autenticação. Para o estado das páginas (dados de tabelas, filtros), o estado local do React (`useState`, `useReducer`) será suficiente inicialmente.
+- **Comunicação com API:** Todas as chamadas para os microsserviços de backend serão centralizadas e gerenciadas através de um `ApiService` ou hooks customizados (ex: `useApi`).
+
+## 5. Objetivo Final
+
+O dashboard deve capacitar os administradores a manter um catálogo de produtos de alta qualidade, garantindo que os lojistas tenham uma experiência fluida ao criar ofertas, focando apenas no preço e na quantidade, enquanto os consumidores recebem informações precisas e confiáveis.

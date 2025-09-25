@@ -95,7 +95,16 @@ Este documento detalha o plano de desenvolvimento para o **Aplicativo Móvel** d
 ### Fase 6: Testes, Refinamento e Publicação
 -   **Objetivo:** Garantir a qualidade e preparar o aplicativo para o lançamento.
 
-## 5. Próximos Passos
+## 5. Crítica de Dados de Produtos
+
+-   **Botão "Reportar Problema":** Na tela `ProductDetailScreen`, um botão (ou ícone) permitirá ao usuário reportar um problema com os dados do produto.
+-   **Formulário de Crítica:** Ao ser acionado, um modal simples aparecerá, permitindo ao usuário:
+    -   Selecionar o tipo de problema (ex: "Foto incorreta", "Descrição errada", "Categoria inválida").
+    -   Escrever um breve comentário (opcional).
+-   **Envio:** A crítica será enviada a um endpoint específico no backend (provavelmente no `servico-usuarios` ou um novo serviço de feedback), que a registrará para revisão no Dashboard Administrativo.
+
+## 6. Próximos Passos
 
 -   [ ] Iniciar a **Fase 1** para reconfigurar a autenticação e navegação.
 -   [ ] Proceder com as fases de implementação, começando pela `StoreSelectionScreen`.
+-   [ ] Integrar a funcionalidade de crítica de dados na Fase 2 (Funcionalidades do Consumidor).
