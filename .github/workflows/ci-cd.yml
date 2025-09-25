@@ -9,8 +9,63 @@ on:
       - 'frontend-tester/**'
 
 jobs:
+  test-microservices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install pytest
+        run: pip install pytest
+
+      - name: Run tests for servico-usuarios
+        run: |
+          pip install -r services/servico-usuarios/requirements.txt
+          pytest services/servico-usuarios/tests
+
+      - name: Run tests for servico-busca
+        run: |
+          pip install -r services/servico-busca/requirements.txt
+          pytest services/servico-busca/tests
+
+      - name: Run tests for servico-monitoramento
+        run: |
+          pip install -r services/servico-monitoramento/requirements.txt
+          pytest services/servico-monitoramento/tests
+
+      - name: Run tests for servico-agentes-ia
+        run: |
+          pip install -r services/servico_agentes_ia/requirements.txt
+          pytest services/servico_agentes_ia/tests
+
+      - name: Run tests for servico-lojas
+        run: |
+          pip install -r services/servico_lojas/requirements.txt
+          pytest services/servico_lojas/tests
+
+      - name: Run tests for servico-ofertas
+        run: |
+          pip install -r services/servico_ofertas/requirements.txt
+          pytest services/servico_ofertas/tests
+
+      - name: Run tests for servico-produtos
+        run: |
+          pip install -r services/servico-produtos/requirements.txt
+          pytest services/servico-produtos/tests
+
+      - name: Run tests for servico-healthcheck
+        run: |
+          pip install -r services/servico_healthcheck/requirements.txt
+          pytest services/servico_healthcheck/tests
+
   deploy-microservices:
     runs-on: ubuntu-latest
+    needs: test-microservices
     outputs:
       servico_usuarios_url: ${{ steps.deploy_servico_usuarios.outputs.url }}
       servico_busca_url: ${{ steps.deploy_servico_busca.outputs.url }}
