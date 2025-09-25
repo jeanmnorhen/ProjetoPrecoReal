@@ -12,6 +12,10 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     try {
+      if (!auth) {
+        console.error("Firebase authentication is not available.");
+        return;
+      }
       await auth.signOut();
       router.push("/"); // Redirect to home/login page after logout
     } catch (error) {
