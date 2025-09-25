@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import AdminLayout from "../../components/AdminLayout";
+import { useAuth } from "../../context/AuthContext"; // Import useAuth
 
 function CanonicosPage() {
   const { idToken } = useAuth(); // Get idToken from context
