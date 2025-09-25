@@ -1,4 +1,6 @@
 // frontend-tester/src/app/admin/dashboard/page.tsx
+"use client";
+
 import { useEffect, useState } from 'react';
 import AdminLayout from '../../../components/AdminLayout';
 import StatCard from '../../../components/StatCard';
