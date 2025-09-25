@@ -3,25 +3,10 @@ import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import HealthcheckPage from './page';
 import '@testing-library/jest-dom';
-import { AuthContext } from '../../context/AuthContext'; // Import AuthContext
 
 // Mock do process.env para simular a variável de ambiente
 const mockHealthcheckApiUrl = "http://mock-healthcheck-api.com";
 const originalEnv = process.env;
-
-// Mock AuthProvider para testes
-const MockAuthProvider = ({ children }: { children: React.ReactNode }) => (
-  <AuthContext.Provider value={{
-    currentUser: { uid: 'test-uid', email: 'test@example.com' },
-    idToken: 'mock-id-token',
-    loading: false,
-    signIn: jest.fn(),
-    signUp: jest.fn(),
-    signOut: jest.fn(),
-  }}>
-    {children}
-  </AuthContext.Provider>
-);
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -49,11 +34,7 @@ describe('HealthcheckPage', () => {
     global.fetch = jest.fn(() => new Promise(resolve => { resolveFetch = resolve; })) as jest.Mock;
 
     await act(async () => {
-      render(
-        <MockAuthProvider>
-          <HealthcheckPage />
-        </MockAuthProvider>
-      );
+      render(<HealthcheckPage />);
     });
     expect(screen.getByText('Carregando health check...')).toBeInTheDocument();
 
@@ -77,11 +58,7 @@ describe('HealthcheckPage', () => {
     ) as jest.Mock;
 
     await act(async () => {
-      render(
-        <MockAuthProvider>
-          <HealthcheckPage />
-        </MockAuthProvider>
-      );
+      render(<HealthcheckPage />);
     });
 
     await waitFor(() => {
@@ -100,11 +77,7 @@ describe('HealthcheckPage', () => {
     ) as jest.Mock;
 
     await act(async () => {
-      render(
-        <MockAuthProvider>
-          <HealthcheckPage />
-        </MockAuthProvider>
-      );
+      render(<HealthcheckPage />);
     });
 
     await waitFor(() => {
@@ -117,11 +90,7 @@ describe('HealthcheckPage', () => {
     process.env.NEXT_PUBLIC_HEALTHCHECK_API_URL = undefined;
 
     await act(async () => {
-      render(
-        <MockAuthProvider>
-          <HealthcheckPage />
-        </MockAuthProvider>
-      );
+      render(<HealthcheckPage />);
     });
 
     await waitFor(() => {

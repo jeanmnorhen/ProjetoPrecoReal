@@ -14,3 +14,19 @@ jest.mock('lib/firebase', () => ({
   },
   // Mock de outros exports de firebase.ts se houver
 }));
+
+// Mock do módulo AuthContext.tsx
+jest.mock('../../src/context/AuthContext', () => ({
+  useAuth: jest.fn(() => ({
+    currentUser: { uid: 'test-uid', email: 'test@example.com' },
+    idToken: 'mock-id-token',
+    loading: false,
+    signIn: jest.fn(),
+    signUp: jest.fn(),
+    signOut: jest.fn(),
+  })),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children, // Apenas renderiza os filhos
+  AuthContext: { // Mock do objeto AuthContext para que .Provider não seja undefined
+    Provider: ({ children }: { children: React.ReactNode }) => children,
+  },
+}));
