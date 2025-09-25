@@ -30,3 +30,22 @@ jest.mock('src/context/AuthContext', () => ({
     Provider: ({ children }) => children, // Simplificado
   },
 }));
+
+// Mock do useRouter do Next.js
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    reload: jest.fn(),
+    back: jest.fn(),
+    prefetch: jest.fn(),
+    beforePopState: jest.fn(),
+    events: {
+      on: jest.fn(),
+      off: jest.fn(),
+      emit: jest.fn(),
+    },
+  })),
+  usePathname: jest.fn(() => '/'), // Mock para retornar um pathname padrão
+  useSearchParams: jest.fn(() => new URLSearchParams()),
+}));
