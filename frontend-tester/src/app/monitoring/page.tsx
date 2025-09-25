@@ -13,8 +13,9 @@ interface PriceHistory {
 
 const MONITORING_API_URL = process.env.NEXT_PUBLIC_MONITORING_API_URL;
 
+import AdminLayout from "../../components/AdminLayout";
+
 export default function MonitoringPage() {
-  const { currentUser, loading: authLoading } = useAuth();
   const [productId, setProductId] = useState("");
   const [history, setHistory] = useState<PriceHistory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,20 +50,8 @@ export default function MonitoringPage() {
     }
   };
 
-  if (authLoading) return <div className="text-center p-10">Carregando autenticação...</div>;
-
-  if (!currentUser) {
-    return (
-      <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4 text-center">Autenticação</h1>
-        <p className="text-center mb-4">Você precisa se autenticar para ver o monitoramento.</p>
-        <AuthForm />
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto p-4">
+    <AdminLayout>
       <h1 className="text-2xl font-bold mb-4">Price Monitoring</h1>
 
       <div className="bg-white p-4 rounded shadow-md mb-6">
@@ -87,7 +76,9 @@ export default function MonitoringPage() {
 
       <div className="bg-white p-4 rounded shadow-md">
         <h2 className="text-xl font-semibold mb-4">Price History for: {productId}</h2>
-        {history.length > 0 ? (
+        {loading ? (
+          <p>Loading...</p>
+        ) : history.length > 0 ? (
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -108,6 +99,6 @@ export default function MonitoringPage() {
           <p>No history found for this product, or none fetched yet.</p>
         )}
       </div>
-    </div>
+    </AdminLayout>
   );
 }

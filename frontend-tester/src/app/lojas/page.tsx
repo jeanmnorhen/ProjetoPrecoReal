@@ -16,8 +16,10 @@ interface Store {
 
 const STORES_API_URL = process.env.NEXT_PUBLIC_STORES_API_URL;
 
+import AdminLayout from "../../components/AdminLayout";
+
 export default function LojasPage() {
-  const { idToken, currentUser, loading: authLoading } = useAuth();
+  const { idToken } = useAuth();
 
   const [store, setStore] = useState<Partial<Store>>({ name: "", address: "", store_category: "", description: "", location: { latitude: 0, longitude: 0 } });
   const [storeIdToFetch, setStoreIdToFetch] = useState("");
@@ -182,20 +184,8 @@ export default function LojasPage() {
     }
   };
 
-  if (authLoading) return <div className="text-center p-10">Carregando autenticação...</div>;
-
-  if (!currentUser) {
-    return (
-      <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4 text-center">Autenticação</h1>
-        <p className="text-center mb-4">Você precisa se autenticar para gerenciar lojas.</p>
-        <AuthForm />
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto p-4">
+    <AdminLayout>
       <h1 className="text-2xl font-bold mb-6">Gerenciamento de Loja</h1>
 
       <div className="bg-white p-4 rounded shadow-md mb-6">
@@ -283,6 +273,6 @@ export default function LojasPage() {
         {error && <p className="text-red-500 font-bold">Erro: {error}</p>}
         {message && <p className="text-green-500 font-bold">{message}</p>}
       </div>
-    </div>
+    </AdminLayout>
   );
 }

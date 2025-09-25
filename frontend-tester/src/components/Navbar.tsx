@@ -24,31 +24,18 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-gray-800 p-4">
-      <div className="container mx-auto flex justify-between items-center">
-        <Link href="/" className="text-white text-lg font-bold">
-          Admin Preço Real
-        </Link>
+    <header className="bg-white shadow-sm">
+      <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
+        <h1 className="text-lg font-semibold leading-6 text-gray-900">Dashboard</h1>
         {currentUser && (
-          <div className="space-x-4 flex items-center">
-            <Link href="/canonicos" className="text-gray-300 hover:text-white">
-              Catálogo
-            </Link>
-            <Link href="/monitoring" className="text-gray-300 hover:text-white">
-              Monitoramento
-            </Link>
-            <Link href="/healthcheck" className="text-gray-300 hover:text-white">
-              Health Check
-            </Link>
             <button
               onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded"
+              className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md"
             >
               Logout
             </button>
-          </div>
         )}
       </div>
-    </nav>
+    </header>
   );
 }

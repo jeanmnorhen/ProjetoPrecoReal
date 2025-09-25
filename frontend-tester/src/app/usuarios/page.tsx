@@ -15,8 +15,10 @@ interface User {
 // URL da API de produção
 const USERS_API_URL = process.env.NEXT_PUBLIC_USERS_API_URL;
 
+import AdminLayout from "../../components/AdminLayout";
+
 export default function UsuariosPage() {
-  const { idToken, currentUser, loading: authLoading } = useAuth();
+  const { idToken } = useAuth();
 
   // State for the user being managed (created, fetched, or edited)
   const [user, setUser] = useState<Partial<User>>({ email: "", name: "", location: { latitude: 0, longitude: 0 } });
@@ -174,22 +176,8 @@ export default function UsuariosPage() {
     }
   };
 
-  if (authLoading) {
-    return <div className="text-center p-10">Carregando autenticação...</div>;
-  }
-
-  if (!currentUser) {
-    return (
-      <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4 text-center">Autenticação</h1>
-        <p className="text-center mb-4">Você precisa se autenticar para gerenciar usuários.</p>
-        <AuthForm />
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto p-4">
+    <AdminLayout>
       <h1 className="text-2xl font-bold mb-6">Gerenciamento de Usuário</h1>
 
       {/* SEARCH FORM */}
@@ -238,6 +226,6 @@ export default function UsuariosPage() {
         {error && <p className="text-red-500 font-bold">Erro: {error}</p>}
         {message && <p className="text-green-500 font-bold">{message}</p>}
       </div>
-    </div>
+    </AdminLayout>
   );
 }
