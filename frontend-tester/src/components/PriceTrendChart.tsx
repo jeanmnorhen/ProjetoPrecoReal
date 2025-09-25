@@ -31,5 +31,6 @@ export default function PriceTrendChart({ data }: PriceTrendProps) {
         <Line type="monotone" dataKey="avg_price" stroke="#8884d8" name="Preço Médio" />
       </LineChart>
     </ResponsiveContainer>
+    </>
   );
 }
