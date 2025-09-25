@@ -16,7 +16,7 @@ jest.mock('lib/firebase', () => ({
 }));
 
 // Mock do módulo AuthContext.tsx
-jest.mock('../../src/context/AuthContext', () => ({
+jest.mock('../src/context/AuthContext', () => ({
   useAuth: jest.fn(() => ({
     currentUser: { uid: 'test-uid', email: 'test@example.com' },
     idToken: 'mock-id-token',
