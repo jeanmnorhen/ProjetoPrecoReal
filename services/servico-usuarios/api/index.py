@@ -123,6 +123,15 @@ if Base != object and Geography:
         store_id = Column(String, primary_key=True)
         location = Column(Geography(geometry_type='POINT', srid=4326), nullable=False)
 
+    class Critica(Base):
+        __tablename__ = 'criticas'
+        id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+        produto_id = Column(String, nullable=False)
+        tipo_critica = Column(String, nullable=False)
+        comentario = Column(String)
+        status = Column(String, default='PENDENTE') # PENDENTE, RESOLVIDA, REJEITADA
+        criado_em = Column(String, default=lambda: datetime.now(timezone.utc).isoformat())
+
 
 def init_db():
     global db_init_error
@@ -330,8 +339,11 @@ def delete_user(user_id):
 @app.route('/api/criticas', methods=['POST'])
 def add_critica():
     """
-    Recebe uma crítica de produto de um usuário.
+    Recebe uma crítica de produto de um usuário e a salva no banco de dados.
     """
+    if not db_session:
+        return jsonify({"error": "Dependências de banco de dados não inicializadas."}), 503
+
     if not request.is_json:
         return jsonify({"error": "Missing JSON in request"}), 400
 
@@ -343,10 +355,43 @@ def add_critica():
     if not all([produto_id, tipo_critica]):
         return jsonify({"error": "Missing required fields: produto_id, tipo_critica"}), 400
 
-    # TODO: Salvar a crítica no banco de dados com status 'pendente'
-    print(f"Crítica recebida: Produto ID={produto_id}, Tipo={tipo_critica}, Comentário={comentario}")
+    try:
+        new_critica = Critica(
+            produto_id=produto_id,
+            tipo_critica=tipo_critica,
+            comentario=comentario,
+            status='PENDENTE'
+        )
+        db_session.add(new_critica)
+        db_session.commit()
+        return jsonify({"id": new_critica.id, "message": "Crítica recebida e salva com sucesso!"}), 201
+    except Exception as e:
+        db_session.rollback()
+        return jsonify({"error": f"Erro ao salvar crítica: {e}"}), 500
 
-    return jsonify({"message": "Crítica recebida com sucesso!"}), 201
+@app.route('/api/criticas', methods=['GET'])
+def get_criticas():
+    """
+    Retorna todas as críticas com status 'PENDENTE'.
+    """
+    if not db_session:
+        return jsonify({"error": "Dependências de banco de dados não inicializadas."}), 503
+
+    try:
+        criticas_pendentes = db_session.query(Critica).filter_by(status='PENDENTE').all()
+        result = []
+        for critica in criticas_pendentes:
+            result.append({
+                "id": critica.id,
+                "produto_id": critica.produto_id,
+                "tipo_critica": critica.tipo_critica,
+                "comentario": critica.comentario,
+                "status": critica.status,
+                "criado_em": critica.criado_em
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": f"Erro ao buscar críticas: {e}"}), 500
 
 # --- Funções Auxiliares de Autorização ---
 
