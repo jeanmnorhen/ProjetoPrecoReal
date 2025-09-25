@@ -19,8 +19,9 @@ export default function PriceTrendChart({ data }: PriceTrendProps) {
   }
 
   return (
-    {/* 384px is h-96 */}
-    <ResponsiveContainer width="100%" height={384}>
+    <>
+      {/* 384px is h-96 */}
+      <ResponsiveContainer width="100%" height={384}>
       <LineChart data={data}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="date" />
