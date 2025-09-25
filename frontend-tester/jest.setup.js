@@ -1,24 +1,16 @@
 import 'whatwg-fetch';
 import '@testing-library/jest-dom';
 
-// Mock Firebase
-jest.mock('firebase/app', () => ({
-  initializeApp: jest.fn(() => ({})),
-  getApps: jest.fn(() => []),
-  getApp: jest.fn(() => ({})),
-}));
-
-jest.mock('firebase/auth', () => ({
-  getAuth: jest.fn(() => ({
+// Mock do módulo firebase.ts
+jest.mock('../../lib/firebase', () => ({
+  auth: {
     onAuthStateChanged: jest.fn((callback) => {
-      // Simulate no user logged in by default for tests
+      // Simula nenhum usuário logado por padrão para testes
       callback(null);
-      return jest.fn(); // Return an unsubscribe function
+      return jest.fn(); // Retorna uma função de unsubscribe
     }),
     signOut: jest.fn(() => Promise.resolve()),
-    // Mock other auth methods as needed for specific tests
-  })),
-  signInWithEmailAndPassword: jest.fn(() => Promise.resolve({ user: { uid: 'test-uid', email: 'test@example.com' } })),
-  createUserWithEmailAndPassword: jest.fn(() => Promise.resolve({ user: { uid: 'test-uid', email: 'test@example.com' } })),
-  // Add other Firebase Auth mocks as your tests require them
+    // Mock de outros métodos de auth conforme necessário
+  },
+  // Mock de outros exports de firebase.ts se houver
 }));
