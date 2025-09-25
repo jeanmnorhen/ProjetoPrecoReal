@@ -5,6 +5,17 @@ import { useState, useEffect } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { useAuth } from "../../context/AuthContext"; // Import useAuth
 
+interface Suggestion {
+  id: string;
+  term: string;
+  source: string;
+  status: string;
+  created_at: string; // ISO string
+  task_id?: string;
+}
+
+const AGENTS_API_URL = process.env.NEXT_PUBLIC_AGENTS_API_URL;
+
 function CanonicosPage() {
   const { idToken } = useAuth(); // Get idToken from context
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
