@@ -36,7 +36,7 @@ describe('HealthcheckPage', () => {
     await act(async () => {
       render(<HealthcheckPage />);
     });
-    expect(screen.getByText('Carregando health check...')).toBeInTheDocument();
+    expect(screen.getByText('Loading health check...')).toBeInTheDocument();
 
     // Resolve the fetch promise to allow the component to move past loading state
     await act(async () => {
