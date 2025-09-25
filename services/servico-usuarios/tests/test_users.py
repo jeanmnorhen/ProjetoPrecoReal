@@ -45,7 +45,7 @@ def mock_global_dependencies(mocker):
     # Mockar as variáveis globais que são inicializadas no api.index
     mocker.patch('api.index.db', mocker.MagicMock())
     mocker.patch('api.index.producer', mocker.MagicMock())
-    mocker.patch('api.index.db_session', mocker.MagicMock())
+    # mocker.patch('api.index.db_session', mocker.MagicMock()) # Removido
     mocker.patch('api.index.engine', mocker.MagicMock())
     mocker.patch('api.index.Base', mocker.MagicMock())
 
@@ -264,11 +264,17 @@ def mock_critica_model(mocker):
 
 @pytest.fixture
 def mock_db_session_add_commit(mocker):
-    mock_session = mocker.patch('api.index.db_session', autospec=True)
+    mock_session = mocker.MagicMock(spec=api_index.sessionmaker())
     mock_session.add = mocker.MagicMock()
     mock_session.commit = mocker.MagicMock()
     mock_session.rollback = mocker.MagicMock()
-    mock_session.query.return_value.filter_by.return_value.all.return_value = [] # Default for get_criticas
+    
+    # Mockar o encadeamento de query
+    mock_query_result = mocker.MagicMock()
+    mock_query_result.filter_by.return_value.all.return_value = [] # Default para get_criticas
+    mock_session.query.return_value = mock_query_result
+
+    mocker.patch('api.index.db_session', mock_session)
     return mock_session
 
 def test_add_critica_success(client, mock_critica_model, mock_db_session_add_commit):
