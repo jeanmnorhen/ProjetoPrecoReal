@@ -178,3 +178,31 @@ def test_get_price_history_no_product_id(client):
     response = client.get('/api/monitoring/prices')
     assert response.status_code == 400
     assert "Parâmetro 'product_id' é obrigatório." in response.json['error']
+
+# --- Testes para as Novas Rotas do Dashboard ---
+
+def test_get_usage_metrics(client):
+    """Testa o endpoint de métricas de uso."""
+    response = client.get('/api/metricas/uso')
+    assert response.status_code == 200
+    data = response.json
+    assert "active_users_today" in data
+    assert "searches_per_day" in data
+    assert "top_searched_products" in data
+    assert isinstance(data['searches_per_day'], list)
+
+def test_get_price_averages(client):
+    """Testa o endpoint de médias de preços."""
+    # Teste sem parâmetros
+    response = client.get('/api/metricas/precos')
+    assert response.status_code == 200
+    data = response.json
+    assert data['product_id'] == 'default_product'
+    assert "average_price_trend" in data
+
+    # Teste com parâmetros
+    response = client.get('/api/metricas/precos?product_id=prod123&region=sul')
+    assert response.status_code == 200
+    data = response.json
+    assert data['product_id'] == 'prod123'
+    assert data['region'] == 'sul'

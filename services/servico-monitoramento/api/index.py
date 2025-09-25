@@ -198,6 +198,50 @@ def get_price_history():
         print(f"Error querying InfluxDB: {e}")
         return jsonify({"error": f"Erro ao buscar histórico de preços e agregações: {e}"}), 500
 
+# --- Novas Rotas para o Dashboard Administrativo ---
+
+@app.route('/api/metricas/uso', methods=['GET'])
+def get_usage_metrics():
+    """Retorna métricas de uso do aplicativo (mock)."""
+    # Em um cenário real, estes dados viriam do InfluxDB ou de outro sistema de analytics
+    mock_data = {
+        "active_users_today": 1502,
+        "active_users_week": 8432,
+        "searches_per_day": [
+            {"date": "2025-09-20", "count": 12034},
+            {"date": "2025-09-21", "count": 15234},
+            {"date": "2025-09-22", "count": 14890},
+            {"date": "2025-09-23", "count": 16012},
+            {"date": "2025-09-24", "count": 15589},
+        ],
+        "top_searched_products": [
+            {"product_name": "Leite Integral", "count": 5432},
+            {"product_name": "Pão Francês", "count": 4987},
+            {"product_name": "Arroz Agulhinha 5kg", "count": 3123},
+        ]
+    }
+    return jsonify(mock_data), 200
+
+@app.route('/api/metricas/precos', methods=['GET'])
+def get_price_averages():
+    """Retorna médias de preços de produtos para o dashboard (mock)."""
+    product_id = request.args.get('product_id', 'default_product')
+    region = request.args.get('region', 'default_region')
+
+    # Mock data - em um cenário real, faria uma query complexa no InfluxDB
+    mock_data = {
+        "product_id": product_id,
+        "region": region,
+        "average_price_trend": [
+            {"date": "2025-07-01", "avg_price": 5.50},
+            {"date": "2025-08-01", "avg_price": 5.65},
+            {"date": "2025-09-01", "avg_price": 5.60},
+        ],
+        "competitor_average": 5.75,
+        "market_average": 5.68
+    }
+    return jsonify(mock_data), 200
+
 def get_health_status():
     env_vars = {
         "INFLUXDB_URL": "present" if os.environ.get('INFLUXDB_URL') else "missing",

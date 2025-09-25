@@ -327,6 +327,27 @@ def delete_user(user_id):
         db_session.rollback()
         return jsonify({"error": f"Erro ao deletar usuário: {e}"}), 500
 
+@app.route('/api/criticas', methods=['POST'])
+def add_critica():
+    """
+    Recebe uma crítica de produto de um usuário.
+    """
+    if not request.is_json:
+        return jsonify({"error": "Missing JSON in request"}), 400
+
+    data = request.get_json()
+    produto_id = data.get('produto_id')
+    tipo_critica = data.get('tipo_critica')
+    comentario = data.get('comentario')
+
+    if not all([produto_id, tipo_critica]):
+        return jsonify({"error": "Missing required fields: produto_id, tipo_critica"}), 400
+
+    # TODO: Salvar a crítica no banco de dados com status 'pendente'
+    print(f"Crítica recebida: Produto ID={produto_id}, Tipo={tipo_critica}, Comentário={comentario}")
+
+    return jsonify({"message": "Crítica recebida com sucesso!"}), 201
+
 # --- Funções Auxiliares de Autorização ---
 
 def verify_owner(user_id, store_id):

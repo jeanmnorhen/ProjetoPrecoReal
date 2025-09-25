@@ -252,3 +252,35 @@ def test_health_check_pg_error(client, postgis_mock_session, mocker):
     assert response.status_code == 503
     assert response.json["dependencies"]["postgresql_connection"] == "error during query: Connection failed"
     assert response.json["initialization_errors"]["postgresql_query"] == "Connection failed"
+
+# --- Testes para Críticas de Produtos ---
+
+def test_add_critica_success(client):
+    """Testa o envio bem-sucedido de uma crítica de produto."""
+    critica_data = {
+        "produto_id": "prod_123",
+        "tipo_critica": "Foto incorreta",
+        "comentario": "A foto não corresponde ao produto."
+    }
+    response = client.post('/api/criticas', json=critica_data)
+
+    assert response.status_code == 201
+    assert response.json == {"message": "Crítica recebida com sucesso!"}
+
+def test_add_critica_no_json(client):
+    """Testa o erro ao enviar uma crítica sem corpo JSON."""
+    response = client.post('/api/criticas', data="não é json")
+
+    assert response.status_code == 400
+    assert response.json == {"error": "Missing JSON in request"}
+
+def test_add_critica_missing_fields(client):
+    """Testa o erro ao enviar uma crítica com campos faltando."""
+    critica_data = {
+        "produto_id": "prod_123"
+        # "tipo_critica" está faltando
+    }
+    response = client.post('/api/criticas', json=critica_data)
+
+    assert response.status_code == 400
+    assert response.json == {"error": "Missing required fields: produto_id, tipo_critica"}
