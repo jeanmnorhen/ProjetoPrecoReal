@@ -255,7 +255,23 @@ def test_health_check_pg_error(client, postgis_mock_session, mocker):
 
 # --- Testes para Críticas de Produtos ---
 
-def test_add_critica_success(client):
+@pytest.fixture
+def mock_critica_model(mocker):
+    mock_critica_instance = mocker.MagicMock()
+    mock_critica_instance.id = "mock-critica-id"
+    mocker.patch('api.index.Critica', return_value=mock_critica_instance)
+    return mock_critica_instance
+
+@pytest.fixture
+def mock_db_session_add_commit(mocker):
+    mock_session = mocker.patch('api.index.db_session', autospec=True)
+    mock_session.add = mocker.MagicMock()
+    mock_session.commit = mocker.MagicMock()
+    mock_session.rollback = mocker.MagicMock()
+    mock_session.query.return_value.filter_by.return_value.all.return_value = [] # Default for get_criticas
+    return mock_session
+
+def test_add_critica_success(client, mock_critica_model, mock_db_session_add_commit):
     """Testa o envio bem-sucedido de uma crítica de produto."""
     critica_data = {
         "produto_id": "prod_123",
@@ -265,7 +281,10 @@ def test_add_critica_success(client):
     response = client.post('/api/criticas', json=critica_data)
 
     assert response.status_code == 201
-    assert response.json == {"message": "Crítica recebida com sucesso!"}
+    assert "id" in response.json
+    assert response.json["message"] == "Crítica recebida e salva com sucesso!"
+    mock_db_session_add_commit.add.assert_called_once_with(mock_critica_model)
+    mock_db_session_add_commit.commit.assert_called_once()
 
 def test_add_critica_no_json(client):
     """Testa o erro ao enviar uma crítica sem corpo JSON."""
@@ -284,3 +303,25 @@ def test_add_critica_missing_fields(client):
 
     assert response.status_code == 400
     assert response.json == {"error": "Missing required fields: produto_id, tipo_critica"}
+
+def test_get_criticas_success(client, mock_db_session_add_commit):
+    """Testa a busca bem-sucedida de críticas pendentes."""
+    mock_critica_1 = api_index.Critica(id="critica-1", produto_id="prod-1", tipo_critica="PRECO_INCORRETO", comentario="Comentário 1", status="PENDENTE", criado_em="2023-01-01T10:00:00Z")
+    mock_critica_2 = api_index.Critica(id="critica-2", produto_id="prod-2", tipo_critica="IMAGEM_RUIM", comentario="Comentário 2", status="PENDENTE", criado_em="2023-01-01T11:00:00Z")
+    mock_db_session_add_commit.query.return_value.filter_by.return_value.all.return_value = [mock_critica_1, mock_critica_2]
+
+    response = client.get('/api/criticas')
+
+    assert response.status_code == 200
+    assert len(response.json) == 2
+    assert response.json[0]["id"] == "critica-1"
+    assert response.json[1]["id"] == "critica-2"
+
+def test_get_criticas_no_criticas(client, mock_db_session_add_commit):
+    """Testa a busca quando não há críticas pendentes."""
+    mock_db_session_add_commit.query.return_value.filter_by.return_value.all.return_value = []
+
+    response = client.get('/api/criticas')
+
+    assert response.status_code == 200
+    assert len(response.json) == 0
