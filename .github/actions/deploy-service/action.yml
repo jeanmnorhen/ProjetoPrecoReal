@@ -50,16 +50,18 @@ runs:
         echo "----------------------------"
 
         echo "Running Vercel deploy for ${{ inputs.vercel_project_name }}..."
-        # Captura a saída do deploy, que deve ser a URL na última linha
-        DEPLOY_URL=$(vercel deploy --prod --token ${{ inputs.vercel_token }} --scope ${{ inputs.vercel_org_id }} --yes 2>&1 | tail -n 1)
+        # Captura a saída JSON do deploy
+        DEPLOY_OUTPUT=$(vercel deploy --prod --token ${{ inputs.vercel_token }} --scope ${{ inputs.vercel_org_id }} --yes --json 2>&1)
         
-        echo "--- Vercel Deploy Output (last line) ---"
-        echo "$DEPLOY_URL"
+        echo "--- Vercel Deploy Output (JSON) ---"
+        echo "$DEPLOY_OUTPUT"
         echo "---------------------------------"
         
-        # Verifica se a URL é válida (começa com http e contém .vercel.app)
-        if [[ ! "$DEPLOY_URL" =~ ^https?://.*\.vercel\.app$ ]]; then
-          echo "Erro: O comando 'vercel deploy' não retornou uma URL de deploy válida. Saída: $DEPLOY_URL"
+        # Extrai a URL do deploy da saída JSON
+        DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | jq -r '.url')
+        
+        if [ -z "$DEPLOY_URL" ] || [ "$DEPLOY_URL" == "null" ]; then
+          echo "Erro: O comando 'vercel deploy' não retornou uma URL de deploy válida no formato JSON. Saída: $DEPLOY_OUTPUT"
           exit 1
         fi
         
