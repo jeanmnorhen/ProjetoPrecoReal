@@ -47,7 +47,7 @@ def mock_global_dependencies(mocker):
     mocker.patch('api.index.producer', mocker.MagicMock())
     mocker.patch('api.index.engine', mocker.MagicMock())
     mocker.patch('api.index.Base', mocker.MagicMock())
-    mocker.patch('api.index.Critica', mocker.MagicMock()) # Mock Critica class
+    # mocker.patch('api.index.Critica', mocker.MagicMock()) # Removido
 
     # Mockar as variáveis globais de erro de inicialização para None
     mocker.patch('api.index.firebase_init_error', None)
