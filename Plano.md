@@ -34,4 +34,4 @@ O PREÇO REAL é uma plataforma multicomponente projetada para ser a principal f
 1.  **Finalizar a Configuração do Ambiente Local:** Garantir que todos os serviços e dependências (Kafka, Postgres, Elasticsearch, etc.) estejam rodando de forma estável com Docker Compose.
 2.  **Desenvolver o Dashboard Administrativo:** Implementar as funcionalidades de monitoramento, gestão de críticas e gerenciamento do catálogo de produtos no `frontend-tester`.
 3.  **Desenvolver o Aplicativo Móvel (React Native):** Iniciar o desenvolvimento do aplicativo móvel, seguindo o plano de fases, com foco inicial na autenticação e nas funcionalidades do consumidor.
-4.  **Segurança e Escalabilidade:** Continuar a revisar e aprimorar a segurança entre os serviços e planejar a infraestrutura para escalabilidade na nuvem (Vercel/AWS/GCP).
+4.  **Segurança e Escalabilidade:** Continuar a revisar e aprimorar a segurança entre os serviços e planejar a infraestrutura para escalabilidade na nuvem (Vercel/GCP).
