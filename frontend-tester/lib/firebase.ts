@@ -12,8 +12,8 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-let app;
-let auth;
+let app: FirebaseApp | undefined;
+let auth: Auth | undefined;
 
 if (typeof window !== "undefined") {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();

@@ -29,9 +29,19 @@ export default function AuthForm() {
 
     try {
       if (isLogin) {
+        if (!auth) {
+          setError("Firebase authentication is not available.");
+          setLoading(false);
+          return;
+        }
         await signInWithEmailAndPassword(auth, email, password);
         console.log("Logged in successfully!");
       } else {
+        if (!auth) {
+          setError("Firebase authentication is not available.");
+          setLoading(false);
+          return;
+        }
         await createUserWithEmailAndPassword(auth, email, password);
         console.log("Registered successfully!");
       }
