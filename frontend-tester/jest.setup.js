@@ -2,7 +2,7 @@ import 'whatwg-fetch';
 import '@testing-library/jest-dom';
 
 // Mock do módulo firebase.ts
-jest.mock('../../lib/firebase', () => ({
+jest.mock('../lib/firebase', () => ({
   auth: {
     onAuthStateChanged: jest.fn((callback) => {
       // Simula nenhum usuário logado por padrão para testes
