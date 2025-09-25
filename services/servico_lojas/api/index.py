@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import base64
 
-# --- Importações de dependências ---
+# -1-- Importações de dependências ---
 try:
     import firebase_admin
     from firebase_admin import credentials, auth, firestore

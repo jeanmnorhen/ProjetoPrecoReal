@@ -24,7 +24,7 @@ producer = None
 kafka_consumer_instance = None
 gemini_model = None
 
-# --- Error Tracking ---
+# 1--- Error Tracking ---
 initialization_errors = {
     "firebase": None,
     "kafka_producer": None,
