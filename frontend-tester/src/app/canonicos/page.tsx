@@ -1,9 +1,11 @@
 // frontend-tester/src/app/canonicos/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "../../components/AdminLayout";
-import { useAuth } from "../../context/AuthContext"; // Import useAuth
+import { useAuth } from "../../context/AuthContext";
+import CanonicalProductsTable from "../../components/CanonicalProductsTable";
+import ProductFormModal from "../../components/ProductFormModal";
 
 interface Suggestion {
   id: string;
@@ -14,55 +16,88 @@ interface Suggestion {
   task_id?: string;
 }
 
+interface Product {
+  id?: string;
+  name: string;
+  description?: string;
+  category: string;
+  barcode?: string;
+  image_url?: string;
+}
+
 const AGENTS_API_URL = process.env.NEXT_PUBLIC_AGENTS_API_URL;
 
 function CanonicosPage() {
-  const { idToken } = useAuth(); // Get idToken from context
+  const { idToken } = useAuth();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
+  const [errorSuggestions, setErrorSuggestions] = useState<string | null>(null);
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
+
+  const fetchSuggestions = useCallback(async () => {
+    if (!idToken) {
+      setErrorSuggestions("Token de autenticação não disponível.");
+      setLoadingSuggestions(false);
+      return;
+    }
+    if (!AGENTS_API_URL) {
+      setErrorSuggestions("URL da API de Agentes não configurada.");
+      setLoadingSuggestions(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${AGENTS_API_URL}/api/agents/suggestions`, {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const data: Suggestion[] = await response.json();
+      setSuggestions(data);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setErrorSuggestions(err.message);
+      } else {
+        setErrorSuggestions("An unknown error occurred");
+      }
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }, [idToken]);
 
   useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (!idToken) {
-        // AdminLayout should prevent this, but as a safeguard:
-        setError("Token de autenticação não disponível.");
-        setLoading(false);
-        return;
-      }
-      if (!AGENTS_API_URL) {
-        setError("URL da API de Agentes não configurada.");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const response = await fetch(`${AGENTS_API_URL}/api/agents/suggestions`, {
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-        }
-
-        const data: Suggestion[] = await response.json();
-        setSuggestions(data);
-      } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("An unknown error occurred");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchSuggestions();
-  }, [idToken]); // Re-fetch if idToken changes
+  }, [fetchSuggestions]);
+
+  const handleCreateProductClick = () => {
+    setSelectedProduct(undefined); // Clear any previously selected product
+    setIsModalOpen(true);
+  };
+
+  const handleEditProduct = (product: Product) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setSelectedProduct(undefined);
+    // No need to refetch products here, CanonicalProductsTable will manage its own state
+  };
+
+  const handleProductSaved = () => {
+    // This callback will be passed to ProductFormModal and called after a product is saved.
+    // It will trigger a refresh of the CanonicalProductsTable.
+    // The CanonicalProductsTable component will handle its own data fetching.
+  };
 
   return (
     <AdminLayout>
@@ -71,10 +106,10 @@ function CanonicosPage() {
         
         <div className="bg-white p-4 rounded shadow-md mb-6">
           <h2 className="text-xl font-semibold mb-4">Sugestões Pendentes</h2>
-          {loading ? (
+          {loadingSuggestions ? (
              <div className="text-center p-10">Carregando sugestões...</div>
-          ) : error ? (
-            <div className="text-center p-10 text-red-500">Erro ao carregar sugestões: {error}</div>
+          ) : errorSuggestions ? (
+            <div className="text-center p-10 text-red-500">Erro ao carregar sugestões: {errorSuggestions}</div>
           ) : suggestions.length === 0 ? (
             <p className="text-gray-600">Nenhuma sugestão pendente no momento.</p>
           ) : (
@@ -115,10 +150,25 @@ function CanonicosPage() {
         </div>
 
         <div className="bg-white p-4 rounded shadow-md">
-          <h2 className="text-xl font-semibold mb-4">Catálogo Canônico</h2>
-          <p className="text-gray-600">[Tabela com produtos canônicos existentes para CRUD aparecerá aqui]</p>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Catálogo Canônico</h2>
+            <button
+              onClick={handleCreateProductClick}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            >
+              Adicionar Novo Produto
+            </button>
+          </div>
+          <CanonicalProductsTable onEditProduct={handleEditProduct} />
         </div>
       </div>
+
+      <ProductFormModal
+        isOpen={isModalOpen}
+        onClose={handleModalClose}
+        onSave={handleProductSaved}
+        initialProduct={selectedProduct}
+      />
     </AdminLayout>
   );
 }
