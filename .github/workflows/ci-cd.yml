@@ -117,7 +117,8 @@ jobs:
       - name: Initial Frontend Build and Deploy
         run: |
           npm install
-          vercel build # Alterado de npm run build para vercel build
+          vercel pull --yes --token ${{ secrets.VERCEL_TOKEN }} --scope ${{ secrets.VERCEL_ORG_ID }} --project ${{ secrets.VERCEL_PROJECT_ID_FRONTEND }}
+          vercel build
           vercel deploy --prebuilt --prod --token ${{ secrets.VERCEL_TOKEN }} --scope ${{ secrets.VERCEL_ORG_ID }} --confirm
         working-directory: frontend-tester
 
