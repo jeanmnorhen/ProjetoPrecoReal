@@ -54,7 +54,7 @@ export default function CriticismQueueTable() {
 
   useEffect(() => {
     fetchCriticas();
-  }, [idToken]);
+  }, [idToken, fetchCriticas]);
 
   const handleResolveClick = (critica: Critica) => {
     setSelectedCriticism(critica);

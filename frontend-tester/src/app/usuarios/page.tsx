@@ -3,7 +3,6 @@
 
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import AuthForm from "../../components/AuthForm";
 
 interface User {
   id: string;

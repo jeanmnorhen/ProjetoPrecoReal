@@ -2,8 +2,6 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "../../context/AuthContext";
-import AuthForm from "../../components/AuthForm";
 
 interface PriceHistory {
   time: string;
@@ -13,7 +11,7 @@ interface PriceHistory {
 
 const MONITORING_API_URL = process.env.NEXT_PUBLIC_MONITORING_API_URL;
 
-import AdminLayout from "../../components/AdminLayout";
+import AdminLayout = "../../components/AdminLayout";
 
 export default function MonitoringPage() {
   const [productId, setProductId] = useState("");

@@ -273,9 +273,9 @@ def mock_db_session_add_commit(mocker):
     mock_session.rollback = mocker.MagicMock()
     
     # Mockar o encadeamento de query
-    mock_query_result = mocker.MagicMock()
-    mock_query_result.filter_by.return_value.all.return_value = [] # Default para get_criticas
-    mock_session.query.return_value = mock_query_result
+    mock_query_instance = mocker.MagicMock()
+    mock_query_instance.filter_by.return_value.all.return_value = [] # Default para get_criticas
+    mock_session.query.return_value = mock_query_instance
 
     mocker.patch('api.index.db_session', mock_session)
     return mock_session
