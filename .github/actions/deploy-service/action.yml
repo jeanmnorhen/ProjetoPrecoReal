@@ -24,13 +24,8 @@ runs:
       id: check_changes
       shell: bash
       run: |
-        if git diff --quiet HEAD^ HEAD -- ${{ inputs.service_path }}; then
-          echo "No changes detected in ${{ inputs.service_path }}. Skipping deployment."
-          echo "should_deploy=false" >> $GITHUB_OUTPUT
-        else
-          echo "Changes detected in ${{ inputs.service_path }}. Proceeding with deployment."
-          echo "should_deploy=true" >> $GITHUB_OUTPUT
-        fi
+        echo "Forçando deploy para ${{ inputs.service_path }} para garantir atualização de URL."
+        echo "should_deploy=true" >> $GITHUB_OUTPUT
 
     - name: Deploy ${{ inputs.vercel_project_name }} to Vercel
       id: deploy
