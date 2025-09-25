@@ -1,6 +1,6 @@
 // frontend-tester/lib/firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, Auth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
