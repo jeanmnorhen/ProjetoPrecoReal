@@ -59,8 +59,8 @@ runs:
           exit $DEPLOY_EXIT_CODE
         fi
         
-        # Como removemos --json, a URL é a última linha da saída
-        DEPLOY_URL=$(vercel deploy --prod --token ${{ inputs.vercel_token }} --scope ${{ inputs.vercel_org_id }} --yes 2>&1 | tail -n 1)
+        # Extrai a URL do deploy da saída
+        DEPLOY_URL=$(vercel deploy --prod --token ${{ inputs.vercel_token }} --scope ${{ inputs.vercel_org_id }} --yes 2>&1 | grep "Production: " | awk '{print $2}')
 
         echo "--- Vercel Deploy Output (last line) ---"
         echo "$DEPLOY_URL"
