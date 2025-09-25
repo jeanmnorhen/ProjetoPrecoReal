@@ -23,6 +23,10 @@ O usuário recebe um Alerta informando sobre essa sugestão.
 Produto Não Identificado: Se o Agente de IA não consegue identificar o produto, uma mensagem "Produto não identificado" é exibida. Erro na Análise: Se ocorrer um erro, uma mensagem de falha é mostrada.
 Acesso
 Se o usuário não estiver logado, ele é solicitado a fazer login/cadastro. Onde sua geolocalização é exigida e vinculada ao usuário.
+Criticar dados de produtos (descrição, foto, etc.):
+Em uma oferta, o usuário pode clicar em um botão "Reportar problema".
+Um formulário simples permite que o usuário selecione o tipo de problema (ex: "Foto incorreta", "Descrição errada") e adicione um breve comentário.
+A crítica é enviada para o painel do administrador para revisão.
 
 
 2. Fluxo do Lojista  (Usuário vendedor)
@@ -72,31 +76,24 @@ Se as condições forem falsas, as funcionalidades de gerenciamento são desabil
 
 4. Fluxo do Administrador (Requer Autenticação e Status de Admin)
 
-O administrador gerencia o catálogo de produtos canônicos e monitora médias de preço por região geográfica.
+O administrador utiliza um dashboard centralizado para monitorar a saúde do ecossistema e gerenciar o catálogo de produtos.
 O status de administrador será gerenciado diretamente no firebase.
 
 Login (Mesmo fluxo do lojista/consumidor)
 
-Se o usuário é admin, links adicionais aparecem na Navbar: "Canônicos", "Monitoramento”
+Se o usuário é admin, a aplicação principal é o Dashboard Administrativo.
 
-Gerenciamento de Catálogo Canônico (Canônicos)::
-Revisão de Sugestões de Produtos:
-Uma tabela exibe termos sugeridos (status "pending") vindos da análise de imagem ou da barra de busca, com o termo, origem, data.
-Ações:
-"Buscar produtos": envia o termo para o Agente Especialista em Busca de Produtos em Lojas (no `servico-agentes-ia`), que busca produtos na internet a partir de texto e URLs de lojas.
-"Rejeitar": Atualiza o status da sugestão para "rejected". Novas sugestões de termos já rejeitados são automaticamente excluídas.
+Dashboard Administrativo:
+Visão Geral: Widgets exibem métricas chave como número de usuários ativos, ofertas criadas, novas lojas, e o volume de críticas de produtos pendentes.
+Monitoramento de Preços: Gráficos interativos permitem ao administrador visualizar a média de preços de produtos específicos por região, identificando tendências e anomalias.
+Monitoramento de Uso: Gráficos mostram a atividade do aplicativo, como volume de buscas, produtos mais procurados e engajamento dos usuários.
 
-Visualização do resultado da busca por produtos a partir de termo sugerido:
-À medida que o Agente Especialista em Busca de Produtos em Lojas retorna resultados, os novos produtos são dispostos aguardando aprovação de um administrador para torná-lo um produto canônico. Após a aprovação, o Agente Especialista em Categorização de Produtos (no `servico-agentes-ia`) categoriza automaticamente o produto usando `google-generativeai`.
+Gerenciamento de Críticas de Produtos:
+Fila de Revisão: Uma interface exibe todos os produtos que receberam críticas dos usuários (ex: foto errada, descrição incorreta).
+Ação de Correção: Para cada item na fila, o administrador pode visualizar a crítica, comparar com os dados atuais e corrigir a informação diretamente no produto canônico. A alteração é propagada para todas as ofertas vinculadas.
 
-Gerenciamento de Produtos Canônicos
-Uma tabela lista todos os produto Canônicos.
-"Editar": Abre um diálogo para modificar os dados  do produto canônico.
-"Excluir": Remove o produto canônico (com confirmação em AlertDialog).
-
-Monitoramento de Histórico de Preços
-Seleção de Produto: O admin seleciona um produto canônico de uma lista (Select).
-Visualização de Dados:
-Estatísticas: Cards exibem preço médio, mínimo, máximo e contagem de registros para o produto selecionado.
-Tabela de Histórico: Uma tabela mostra todos os registros de preços arquivados para o produto, incluindo preço, loja e data.
-Gráfico de Tendência: Um gráfico de linha (Recharts) exibe a variação do preço do produto ao longo do tempo.
+Gestão de Produtos Cadastrados (Canônicos):
+O objetivo é ter um catálogo de produtos rico e preciso para que o lojista apenas precifique suas ofertas, sem precisar cadastrar detalhes.
+O administrador pode buscar, filtrar, editar, e criar novos produtos canônicos.
+O formulário de produto canônico inclui nome, descrição detalhada, categoria, código de barras e uma foto de alta qualidade.
+O sistema também pode ter sugestões de novos produtos canônicos baseados em buscas de usuários que não retornaram resultados.
