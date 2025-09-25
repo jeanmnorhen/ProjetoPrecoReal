@@ -10,7 +10,7 @@ from confluent_kafka import Consumer, KafkaException
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=['https://frontend-tester-1foc8lpkl-jeanmnorhens-projects.vercel.app'])
 
-# ---1 Variáveis globais para erros de inicialização ---1
+# --- Variáveis globais para erros de inicialização ---1
 influxdb_init_error = None
 kafka_consumer_init_error = None
 
