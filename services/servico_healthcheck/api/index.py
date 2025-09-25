@@ -6,7 +6,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Define a list of services to monitor and their environment variable names
+#  Define a list of services to monitor and their environment variable names
 # The health endpoint for all services is assumed to be /api/health 3
 SERVICES_TO_MONITOR = {
     "servico_agentes_ia": "SERVICO_AGENTES_IA_URL",
