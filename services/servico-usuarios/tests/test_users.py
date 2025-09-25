@@ -45,9 +45,9 @@ def mock_global_dependencies(mocker):
     # Mockar as variáveis globais que são inicializadas no api.index
     mocker.patch('api.index.db', mocker.MagicMock())
     mocker.patch('api.index.producer', mocker.MagicMock())
-    # mocker.patch('api.index.db_session', mocker.MagicMock()) # Removido
     mocker.patch('api.index.engine', mocker.MagicMock())
     mocker.patch('api.index.Base', mocker.MagicMock())
+    mocker.patch('api.index.Critica', mocker.MagicMock()) # Mock Critica class
 
     # Mockar as variáveis globais de erro de inicialização para None
     mocker.patch('api.index.firebase_init_error', None)
@@ -62,6 +62,9 @@ def mock_global_dependencies(mocker):
     mocker.patch('api.index.Producer', return_value=mocker.MagicMock())
     mocker.patch('api.index.init_db')
     mocker.patch('api.index.text', return_value=mocker.MagicMock())
+    
+    # Mockar o db_session para ser um objeto válido
+    mocker.patch('api.index.db_session', mocker.MagicMock(spec=api_index.sessionmaker()))
 
 @pytest.fixture
 def firebase_mock_db(mocker):
@@ -264,7 +267,7 @@ def mock_critica_model(mocker):
 
 @pytest.fixture
 def mock_db_session_add_commit(mocker):
-    mock_session = mocker.MagicMock(spec=api_index.sessionmaker())
+    mock_session = mocker.MagicMock()
     mock_session.add = mocker.MagicMock()
     mock_session.commit = mocker.MagicMock()
     mock_session.rollback = mocker.MagicMock()
