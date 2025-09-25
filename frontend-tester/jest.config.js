@@ -5,6 +5,7 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^lib/firebase$': '<rootDir>/lib/firebase',
+    '^src/context/AuthContext$': '<rootDir>/src/context/AuthContext',
   },
   transform: {
     '^.+\.(t|j)sx?$': ['@swc/jest', {
