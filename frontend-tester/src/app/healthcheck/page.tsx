@@ -8,10 +8,17 @@ export default function HealthCheckPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchHealth = async () => {
-      try {
-                const response = await fetch(`https://servico-healthcheck-17676sqek-jeanmnorhens-projects.vercel.app/health`);
+    const HEALTHCHECK_API_URL = process.env.NEXT_PUBLIC_HEALTHCHECK_API_URL;
+
+    useEffect(() => {
+      const fetchHealth = async () => {
+        if (!HEALTHCHECK_API_URL) {
+          setError("URL da API de Healthcheck não configurada.");
+          setLoading(false);
+          return;
+        }
+        try {
+          const response = await fetch(`${HEALTHCHECK_API_URL}/health`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
