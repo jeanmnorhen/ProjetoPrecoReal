@@ -25,8 +25,8 @@ jest.mock('../../src/context/AuthContext', () => ({
     signUp: jest.fn(),
     signOut: jest.fn(),
   })),
-  AuthProvider: ({ children }: { children: React.ReactNode }) => children, // Apenas renderiza os filhos
+  AuthProvider: ({ children }) => children, // Simplificado
   AuthContext: { // Mock do objeto AuthContext para que .Provider não seja undefined
-    Provider: ({ children }: { children: React.ReactNode }) => children,
+    Provider: ({ children }) => children, // Simplificado
   },
 }));
