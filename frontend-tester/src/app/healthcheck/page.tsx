@@ -31,9 +31,8 @@ export default function HealthCheckPage() {
       }
     };
 
-    fetchHealth();
-  }, []);
-
+        fetchHealth();
+        }, [HEALTHCHECK_API_URL]);
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen">Loading health check...</div>;
   }
