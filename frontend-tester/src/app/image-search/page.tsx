@@ -3,6 +3,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
+
+console.log("DEBUG: NEXT_PUBLIC_FIREBASE_API_KEY in image-search:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
 import { useAuth } from "../../context/AuthContext"; // Ajuste o caminho conforme necessário
 import AuthForm from "../../components/AuthForm";
 
