@@ -159,6 +159,17 @@ jobs:
           vercel_org_id: ${{ secrets.VERCEL_ORG_ID }} 
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
+      - name: Debug Deploy Microservices Outputs
+        run: |
+          echo "servico_usuarios_url: ${{ steps.deploy_servico_usuarios.outputs.url }}"
+          echo "servico_busca_url: ${{ steps.deploy_servico_busca.outputs.url }}"
+          echo "servico_monitoramento_url: ${{ steps.deploy_servico_monitoramento.outputs.url }}"
+          echo "servico_agentes_ia_url: ${{ steps.deploy_servico_agentes_ia.outputs.url }}"
+          echo "servico_lojas_url: ${{ steps.deploy_servico_lojas.outputs.url }}"
+          echo "servico_ofertas_url: ${{ steps.deploy_servico_ofertas.outputs.url }}"
+          echo "servico_produtos_url: ${{ steps.deploy_servico_produtos.outputs.url }}"
+          echo "servico_healthcheck_url: ${{ steps.deploy_servico_healthcheck.outputs.url }}"
+
   update-frontend-and-deploy:
     runs-on: ubuntu-latest
     needs: deploy-microservices
