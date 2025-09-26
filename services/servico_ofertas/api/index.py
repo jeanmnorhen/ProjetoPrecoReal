@@ -17,7 +17,7 @@ try:
 except ImportError:
     Producer = None
 
-#  --- Variáveis globais para erros de inicialização ---1
+#  --- Variáveis globais para erros de inicialização ---
 firebase_init_error = None
 kafka_producer_init_error = None
 
