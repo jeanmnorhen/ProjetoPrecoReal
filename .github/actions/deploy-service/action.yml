@@ -32,44 +32,44 @@ runs:
       if: steps.check_changes.outputs.should_deploy == 'true'
       shell: bash
       run: |
-              set -e # Exit immediately if a command exits with a non-zero status.
-              set -o pipefail # Return value of a pipeline is the value of the last (rightmost) command to exit with a non-zero status.
-      
-              echo "Navigating to ${{ inputs.service_path }}"
-              cd ${{ inputs.service_path }}
-              
-              echo "--- Debugging Vercel CLI ---"
-              which vercel || { echo "Error: Vercel CLI not found."; exit 1; }
-              vercel --version || { echo "Error: Vercel CLI failed to get version."; exit 1; }
-              vercel whoami --token ${{ inputs.vercel_token }} || { echo "Error: Vercel CLI failed to authenticate. Check VERCEL_TOKEN permissions."; exit 1; }
-              echo "----------------------------"
-      
-              echo "Running Vercel deploy for ${{ inputs.vercel_project_name }}..."
-              
-              # Run deploy once and capture output
-              DEPLOY_OUTPUT=$(vercel deploy --prod --token ${{ inputs.vercel_token }} --scope ${{ inputs.vercel_org_id }} --yes 2>&1)
-              DEPLOY_EXIT_CODE=$?
-      
-              # Print the full output for debugging
-              echo "$DEPLOY_OUTPUT"
-      
-              if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
-                echo "Erro: O comando 'vercel deploy' falhou com código de saída $DEPLOY_EXIT_CODE."
-                exit $DEPLOY_EXIT_CODE
-              fi
-              
-              # Extract the URL from the captured output
-              DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep "Production: " | awk '{print $2}')
-      
-              echo "--- Vercel Deploy Output (last line) ---"
-              echo "$DEPLOY_URL"
-              echo "---------------------------------"
-              
-              # Verifica se a URL é válida (começa com http e contém .vercel.app)
-              if [[ ! "$DEPLOY_URL" =~ ^https?://.*\.vercel\.app$ ]]; then
-                echo "Erro: O comando 'vercel deploy' não retornou uma URL de deploy válida. Saída: $DEPLOY_URL"
-                exit 1
-              fi
-              
-              echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
-              echo "Deployed URL: $DEPLOY_URL" 
+        set -e # Exit immediately if a command exits with a non-zero status.
+        set -o pipefail # Return value of a pipeline is the value of the last (rightmost) command to exit with a non-zero status.
+
+        echo "Navigating to ${{ inputs.service_path }}"
+        cd ${{ inputs.service_path }}
+        
+        echo "--- Debugging Vercel CLI ---"
+        which vercel || { echo "Error: Vercel CLI not found."; exit 1; }
+        vercel --version || { echo "Error: Vercel CLI failed to get version."; exit 1; }
+        vercel whoami --token ${{ inputs.vercel_token }} || { echo "Error: Vercel CLI failed to authenticate. Check VERCEL_TOKEN permissions."; exit 1; }
+        echo "----------------------------"
+
+        echo "Running Vercel deploy for ${{ inputs.vercel_project_name }}..."
+        
+        # Run deploy once and capture output
+        DEPLOY_OUTPUT=$(vercel deploy --prod --token ${{ inputs.vercel_token }} --scope ${{ inputs.vercel_org_id }} --yes 2>&1)
+        DEPLOY_EXIT_CODE=$?
+
+        # Print the full output for debugging
+        echo "$DEPLOY_OUTPUT"
+
+        if [ $DEPLOY_EXIT_CODE -ne 0 ]; then
+          echo "Erro: O comando 'vercel deploy' falhou com código de saída $DEPLOY_EXIT_CODE."
+          exit $DEPLOY_EXIT_CODE
+        fi
+        
+        # Extract the URL from the captured output
+        DEPLOY_URL=$(echo "$DEPLOY_OUTPUT" | grep "Production: " | awk '{print $2}')
+
+        echo "--- Vercel Deploy Output (last line) ---"
+        echo "$DEPLOY_URL"
+        echo "---------------------------------"
+        
+        # Verifica se a URL é válida (começa com http e contém .vercel.app)
+        if [[ ! "$DEPLOY_URL" =~ ^https?://.*\.vercel\.app$ ]]; then
+          echo "Erro: O comando 'vercel deploy' não retornou uma URL de deploy válida. Saída: $DEPLOY_URL"
+          exit 1
+        fi
+        
+        echo "url=$DEPLOY_URL" >> $GITHUB_OUTPUT
+        echo "Deployed URL: $DEPLOY_URL"
