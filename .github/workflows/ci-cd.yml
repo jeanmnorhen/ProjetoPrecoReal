@@ -159,68 +159,6 @@ jobs:
           vercel_org_id: ${{ secrets.VERCEL_ORG_ID }} 
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
-      - name: Update Frontend Environment Variables on Vercel
-        run: |
-          FRONTEND_PROJECT_ID="${{ secrets.VERCEL_PROJECT_ID_FRONTEND }}"
-          ORG_ID="${{ secrets.VERCEL_ORG_ID }}"
-          VERCEL_TOKEN="${{ secrets.VERCEL_TOKEN }}"
-
-          if [ -n "${{ steps.deploy_servico_usuarios.outputs.url }}" ]; then
-            echo "Atualizando variável de ambiente Vercel: NEXT_PUBLIC_USERS_API_URL com URL: ${{ steps.deploy_servico_usuarios.outputs.url }}"
-            vercel env add "NEXT_PUBLIC_USERS_API_URL" "${{ steps.deploy_servico_usuarios.outputs.url }}" --scope "$ORG_ID" --project "$FRONTEND_PROJECT_ID" --token "$VERCEL_TOKEN" --yes
-          else
-            echo "Variável de ambiente NEXT_PUBLIC_USERS_API_URL não atualizada, pois o serviço correspondente não foi implantado."
-          fi
-
-          if [ -n "${{ steps.deploy_servico_busca.outputs.url }}" ]; then
-            echo "Atualizando variável de ambiente Vercel: NEXT_PUBLIC_SEARCH_API_URL com URL: ${{ steps.deploy_servico_busca.outputs.url }}"
-            vercel env add "NEXT_PUBLIC_SEARCH_API_URL" "${{ steps.deploy_servico_busca.outputs.url }}" --scope "$ORG_ID" --project "$FRONTEND_PROJECT_ID" --token "$VERCEL_TOKEN" --yes
-          else
-            echo "Variável de ambiente NEXT_PUBLIC_SEARCH_API_URL não atualizada, pois o serviço correspondente não foi implantado."
-          fi
-
-          if [ -n "${{ steps.deploy_servico_monitoramento.outputs.url }}" ]; then
-            echo "Atualizando variável de ambiente Vercel: NEXT_PUBLIC_MONITORING_API_URL com URL: ${{ steps.deploy_servico_monitoramento.outputs.url }}"
-            vercel env add "NEXT_PUBLIC_MONITORING_API_URL" "${{ steps.deploy_servico_monitoramento.outputs.url }}" --scope "$ORG_ID" --project "$FRONTEND_PROJECT_ID" --token "$VERCEL_TOKEN" --yes
-          else
-            echo "Variável de ambiente NEXT_PUBLIC_MONITORING_API_URL não atualizada, pois o serviço correspondente não foi implantado."
-          fi
-
-          if [ -n "${{ steps.deploy_servico_agentes_ia.outputs.url }}" ]; then
-            echo "Atualizando variável de ambiente Vercel: NEXT_PUBLIC_AI_API_URL com URL: ${{ steps.deploy_servico_agentes_ia.outputs.url }}"
-            vercel env add "NEXT_PUBLIC_AI_API_URL" "${{ steps.deploy_servico_agentes_ia.outputs.url }}" --scope "$ORG_ID" --project "$FRONTEND_PROJECT_ID" --token "$VERCEL_TOKEN" --yes
-          else
-            echo "Variável de ambiente NEXT_PUBLIC_AI_API_URL não atualizada, pois o serviço correspondente não foi implantado."
-          fi
-
-          if [ -n "${{ steps.deploy_servico_lojas.outputs.url }}" ]; then
-            echo "Atualizando variável de ambiente Vercel: NEXT_PUBLIC_STORES_API_URL com URL: ${{ steps.deploy_servico_lojas.outputs.url }}"
-            vercel env add "NEXT_PUBLIC_STORES_API_URL" "${{ steps.deploy_servico_lojas.outputs.url }}" --scope "$ORG_ID" --project "$FRONTEND_PROJECT_ID" --token "$VERCEL_TOKEN" --yes
-          else
-            echo "Variável de ambiente NEXT_PUBLIC_STORES_API_URL não atualizada, pois o serviço correspondente não foi implantado."
-          fi
-
-          if [ -n "${{ steps.deploy_servico_ofertas.outputs.url }}" ]; then
-            echo "Atualizando variável de ambiente Vercel: NEXT_PUBLIC_OFFERS_API_URL com URL: ${{ steps.deploy_servico_ofertas.outputs.url }}"
-            vercel env add "NEXT_PUBLIC_OFFERS_API_URL" "${{ steps.deploy_servico_ofertas.outputs.url }}" --scope "$ORG_ID" --project "$FRONTEND_PROJECT_ID" --token "$VERCEL_TOKEN" --yes
-          else
-            echo "Variável de ambiente NEXT_PUBLIC_OFFERS_API_URL não atualizada, pois o serviço correspondente não foi implantado."
-          fi
-
-          if [ -n "${{ steps.deploy_servico_produtos.outputs.url }}" ]; then
-            echo "Atualizando variável de ambiente Vercel: NEXT_PUBLIC_PRODUCTS_API_URL com URL: ${{ steps.deploy_servico_produtos.outputs.url }}"
-            vercel env add "NEXT_PUBLIC_PRODUCTS_API_URL" "${{ steps.deploy_servico_produtos.outputs.url }}" --scope "$ORG_ID" --project "$FRONTEND_PROJECT_ID" --token "$VERCEL_TOKEN" --yes
-          else
-            echo "Variável de ambiente NEXT_PUBLIC_PRODUCTS_API_URL não atualizada, pois o serviço correspondente não foi implantado."
-          fi
-
-          if [ -n "${{ steps.deploy_servico_healthcheck.outputs.url }}" ]; then
-            echo "Atualizando variável de ambiente Vercel: NEXT_PUBLIC_HEALTHCHECK_API_URL com URL: ${{ steps.deploy_servico_healthcheck.outputs.url }}"
-            vercel env add "NEXT_PUBLIC_HEALTHCHECK_API_URL" "${{ steps.deploy_servico_healthcheck.outputs.url }}" --scope "$ORG_ID" --project "$FRONTEND_PROJECT_ID" --token "$VERCEL_TOKEN" --yes
-          else
-            echo "Variável de ambiente NEXT_PUBLIC_HEALTHCHECK_API_URL não atualizada, pois o serviço correspondente não foi implantado."
-          fi
-
   update-frontend-and-deploy:
     runs-on: ubuntu-latest
     needs: deploy-microservices
@@ -275,5 +213,14 @@ jobs:
           NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
 
       - name: Deploy Frontend to Vercel
-        run: vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --scope ${{ secrets.VERCEL_ORG_ID }} --confirm
+        run: |
+          vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --scope ${{ secrets.VERCEL_ORG_ID }} --confirm \
+          --build-env NEXT_PUBLIC_USERS_API_URL=${{ needs.deploy-microservices.outputs.servico_usuarios_url }} \
+          --build-env NEXT_PUBLIC_SEARCH_API_URL=${{ needs.deploy-microservices.outputs.servico_busca_url }} \
+          --build-env NEXT_PUBLIC_MONITORING_API_URL=${{ needs.deploy-microservices.outputs.servico_monitoramento_url }} \
+          --build-env NEXT_PUBLIC_AI_API_URL=${{ needs.deploy-microservices.outputs.servico_agentes_ia_url }} \
+          --build-env NEXT_PUBLIC_STORES_API_URL=${{ needs.deploy-microservices.outputs.servico_lojas_url }} \
+          --build-env NEXT_PUBLIC_OFFERS_API_URL=${{ needs.deploy-microservices.outputs.servico_ofertas_url }} \
+          --build-env NEXT_PUBLIC_PRODUCTS_API_URL=${{ needs.deploy-microservices.outputs.servico_produtos_url }} \
+          --build-env NEXT_PUBLIC_HEALTHCHECK_API_URL=${{ needs.deploy-microservices.outputs.servico_healthcheck_url }}
         working-directory: frontend-tester
