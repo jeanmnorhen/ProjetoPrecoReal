@@ -19,11 +19,16 @@ interface PriceMetrics {
     average_price_trend: { date: string; avg_price: number }[];
 }
 
+interface GeneralMetrics {
+  pending_critiques_count: number;
+  canonical_products_count: number;
+}
+
 export default function DashboardPage() {
   const { idToken } = useAuth();
   const [usageMetrics, setUsageMetrics] = useState<UsageMetrics | null>(null);
   const [priceMetrics, setPriceMetrics] = useState<PriceMetrics | null>(null);
-  const [generalMetrics, setGeneralMetrics] = useState<any | null>(null);
+  const [generalMetrics, setGeneralMetrics] = useState<GeneralMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +60,7 @@ export default function DashboardPage() {
         setPriceMetrics(priceData);
         setGeneralMetrics(generalData);
 
-      } catch (err) {
+      } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Ocorreu um erro desconhecido.');
       } finally {
         setLoading(false);

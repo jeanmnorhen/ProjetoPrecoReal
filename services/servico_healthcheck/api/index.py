@@ -3,6 +3,7 @@ load_dotenv(dotenv_path='.env.local')
 
 import os
 import requests
+import json
 from flask import Flask, jsonify
 from flask_cors import CORS
 
@@ -31,8 +32,9 @@ def get_overall_health_status():
 
         if service_url:
             try:
-                # Assuming health endpoint is /api/health for all services
-                health_endpoint = f"{service_url}/api/health"
+                # Health endpoint can vary per service
+                health_path = "/health" if service_name == "servico_usuarios" else "/api/health"
+                health_endpoint = f"{service_url}{health_path}"
                 response = requests.get(health_endpoint, timeout=5)
                 response.raise_for_status() # Raise an exception for HTTP errors (4xx or 5xx)
                 
@@ -65,6 +67,8 @@ def get_overall_health_status():
 @app.route('/health', methods=['GET'])
 def health_check():
     status = get_overall_health_status()
+    # Imprime o status detalhado no console para depuração
+    print(json.dumps(status, indent=2))
     http_status_code = 200 if status["status"] == "ok" else 503
     return jsonify(status), http_status_code
 

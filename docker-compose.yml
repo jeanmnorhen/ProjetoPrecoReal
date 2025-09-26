@@ -1,4 +1,5 @@
 services:
+  # --- Infrastructure Services ---
   postgres-postgis:
     image: postgis/postgis:16-3.5
     container_name: postgis_container
@@ -23,11 +24,13 @@ services:
     ports:
       - "9092:9092"
     environment:
-      KAFKA_ADVERTISED_HOST_NAME: localhost
+      KAFKA_ADVERTISED_HOST_NAME: kafka
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_CREATE_TOPICS: "eventos_usuarios:1:1,eventos_produtos:1:1,eventos_lojas:1:1,eventos_ofertas:1:1,eventos_precos_arquivados:1:1,tarefas_ia:1:1,resultados_ia:1:1"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - zookeeper
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.19.4
@@ -42,6 +45,199 @@ services:
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
 
+  influxdb:
+    image: influxdb:2.7
+    container_name: influxdb_container
+    ports:
+      - "8086:8086"
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: password
+      DOCKER_INFLUXDB_INIT_ORG: precoreal
+      DOCKER_INFLUXDB_INIT_BUCKET: precoreal_bucket
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: my-super-secret-token
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+
+  # --- Backend Microservices ---
+  servico-usuarios:
+    build: ./services/servico-usuarios
+    container_name: servico_usuarios_container
+    ports:
+      - "8001:8001"
+    environment:
+      POSTGRES_POSTGRES_URL: postgresql://user:password@postgres-postgis:5432/precoreal_geo
+      KAFKA_BOOTSTRAP_SERVER: kafka:9092
+      FIREBASE_ADMIN_SDK_BASE64: ${FIREBASE_ADMIN_SDK_BASE64}
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
+    depends_on:
+      - postgres-postgis
+      - kafka
+    env_file:
+      - .env
+
+  servico-lojas:
+    build: ./services/servico_lojas
+    container_name: servico_lojas_container
+    ports:
+      - "8005:8005"
+    environment:
+      POSTGRES_POSTGRES_URL: postgresql://user:password@postgres-postgis:5432/precoreal_geo
+      KAFKA_BOOTSTRAP_SERVER: kafka:9092
+      SERVICO_USUARIOS_URL: http://servico-usuarios:8001
+      INTERNAL_SERVICE_SECRET: ${INTERNAL_SERVICE_SECRET}
+      FIREBASE_ADMIN_SDK_BASE64: ${FIREBASE_ADMIN_SDK_BASE64}
+    depends_on:
+      - postgres-postgis
+      - kafka
+      - servico-usuarios
+    env_file:
+      - .env
+
+  servico-produtos:
+    build: ./services/servico-produtos
+    container_name: servico_produtos_container
+    ports:
+      - "8007:8007"
+    environment:
+      KAFKA_BOOTSTRAP_SERVER: kafka:9092
+      SERVICO_USUARIOS_URL: http://servico-usuarios:8001
+      FIREBASE_ADMIN_SDK_BASE64: ${FIREBASE_ADMIN_SDK_BASE64}
+    depends_on:
+      - kafka
+      - servico-usuarios
+    env_file:
+      - .env
+
+  servico-ofertas:
+    build: ./services/servico_ofertas
+    container_name: servico_ofertas_container
+    ports:
+      - "8006:8006"
+    environment:
+      KAFKA_BOOTSTRAP_SERVER: kafka:9092
+      SERVICO_USUARIOS_URL: http://servico-usuarios:8001
+      FIREBASE_ADMIN_SDK_BASE64: ${FIREBASE_ADMIN_SDK_BASE64}
+    depends_on:
+      - kafka
+      - servico-usuarios
+      - servico-produtos
+    env_file:
+      - .env
+
+  servico-busca:
+    build: ./services/servico-busca
+    container_name: servico_busca_container
+    ports:
+      - "8002:8002"
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      KAFKA_BOOTSTRAP_SERVER: kafka:9092
+      CRON_SECRET: ${CRON_SECRET}
+      FIREBASE_ADMIN_SDK_BASE64: ${FIREBASE_ADMIN_SDK_BASE64}
+    depends_on:
+      - elasticsearch
+      - kafka
+    env_file:
+      - .env
+
+  servico-monitoramento:
+    build: ./services/servico-monitoramento
+    container_name: servico_monitoramento_container
+    ports:
+      - "8003:8003"
+    environment:
+      KAFKA_BOOTSTRAP_SERVER: kafka:9092
+      CRON_SECRET: ${CRON_SECRET}
+      SERVICO_USUARIOS_URL: http://servico-usuarios:8001
+      SERVICO_PRODUTOS_URL: http://servico-produtos:8007
+      INFLUXDB_URL: http://influxdb:8086
+      INFLUXDB_TOKEN: ${INFLUXDB_TOKEN}
+      INFLUXDB_ORG: precoreal
+      INFLUXDB_BUCKET: precoreal_bucket
+    depends_on:
+      - kafka
+      - influxdb
+      - servico-usuarios
+      - servico-produtos
+    env_file:
+      - .env
+
+  servico_agentes_ia:
+    build: ./services/servico_agentes_ia
+    container_name: servico_agentes_ia_container
+    ports:
+      - "8004:8004"
+    environment:
+      KAFKA_BOOTSTRAP_SERVER: kafka:9092
+      CRON_SECRET: ${CRON_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      FIREBASE_ADMIN_SDK_BASE64: ${FIREBASE_ADMIN_SDK_BASE64}
+    depends_on:
+      - kafka
+    env_file:
+      - .env
+
+  servico-healthcheck:
+    build: ./services/servico_healthcheck
+    container_name: servico_healthcheck_container
+    ports:
+      - "8008:8008"
+    environment:
+      SERVICO_AGENTES_IA_URL: http://servico_agentes_ia:8004
+      SERVICO_BUSCA_URL: http://servico-busca:8002
+      SERVICO_MONITORAMENTO_URL: http://servico-monitoramento:8003
+      SERVICO_PRODUTOS_URL: http://servico-produtos:8007
+      SERVICO_USUARIOS_URL: http://servico-usuarios:8001
+      SERVICO_LOJAS_URL: http://servico-lojas:8005
+      SERVICO_OFERTAS_URL: http://servico-ofertas:8006
+    depends_on:
+      - servico_agentes_ia
+      - servico-busca
+      - servico-monitoramento
+      - servico-produtos
+      - servico-usuarios
+      - servico-lojas
+      - servico-ofertas
+    env_file:
+      - .env
+
+  # --- Frontend Service ---
+  frontend-tester:
+    build: ./frontend-tester
+    container_name: frontend_tester_container
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_USERS_API_URL: http://localhost:8001
+      NEXT_PUBLIC_STORES_API_URL: http://localhost:8005
+      NEXT_PUBLIC_PRODUCTS_API_URL: http://localhost:8007
+      NEXT_PUBLIC_OFFERS_API_URL: http://localhost:8006
+      NEXT_PUBLIC_SEARCH_API_URL: http://localhost:8002
+      NEXT_PUBLIC_MONITORING_API_URL: http://localhost:8003
+      NEXT_PUBLIC_AI_API_URL: http://localhost:8004
+      NEXT_PUBLIC_HEALTHCHECK_API_URL: http://localhost:8008
+      NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+      NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+      NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID}
+    depends_on:
+      - servico-usuarios
+      - servico-lojas
+      - servico-produtos
+      - servico-ofertas
+      - servico-busca
+      - servico-monitoramento
+      - servico_agentes_ia
+      - servico-healthcheck
+    env_file:
+      - .env
+
 volumes:
   postgres_data:
   elasticsearch_data:
+  influxdb_data:

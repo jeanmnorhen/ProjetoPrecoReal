@@ -1,7 +1,7 @@
 // frontend-tester/src/components/CriticismQueueTable.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import CriticismResolutionModal from "./CriticismResolutionModal";
 
@@ -24,7 +24,7 @@ export default function CriticismQueueTable() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCriticism, setSelectedCriticism] = useState<Critica | null>(null);
 
-  const fetchCriticas = async () => {
+  const fetchCriticas = useCallback(async () => {
     if (!idToken || !USERS_API_URL) {
       setError("Token de autenticação ou URL da API de Usuários não disponível.");
       setLoading(false);
@@ -32,6 +32,8 @@ export default function CriticismQueueTable() {
     }
 
     try {
+      setLoading(true);
+      setError(null);
       const response = await fetch(`${USERS_API_URL}/api/criticas`, {
         headers: {
           Authorization: `Bearer ${idToken}`,
@@ -50,11 +52,11 @@ export default function CriticismQueueTable() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [idToken]);
 
   useEffect(() => {
     fetchCriticas();
-  }, [idToken, fetchCriticas]);
+  }, [fetchCriticas]);
 
   const handleResolveClick = (critica: Critica) => {
     setSelectedCriticism(critica);

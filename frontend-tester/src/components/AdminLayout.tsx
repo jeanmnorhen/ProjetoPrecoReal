@@ -8,19 +8,24 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, loading } = useAuth();
+  const { currentUser, isAdmin, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !currentUser) {
-      router.push('/');
+    if (!loading) {
+      if (!currentUser) {
+        router.push('/'); // Not logged in, redirect to login
+      } else if (!isAdmin) {
+        console.log("Acesso negado: usuário não é admin.");
+        router.push('/'); // Logged in but not admin, redirect to login/home
+      }
     }
-  }, [currentUser, loading, router]);
+  }, [currentUser, isAdmin, loading, router]);
 
-  if (loading || !currentUser) {
+  if (loading || !currentUser || !isAdmin) {
     return (
         <div className="flex h-screen items-center justify-center">
-            <p>Carregando...</p>
+            <p>Verificando permissões...</p>
         </div>
     );
   }

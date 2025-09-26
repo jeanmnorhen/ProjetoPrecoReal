@@ -1,11 +1,11 @@
-// frontend-tester/src/app/canonicos/page.tsx
+// frontend-tester/src/app/admin/canonicos/page.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import AdminLayout from "../../components/AdminLayout";
-import { useAuth } from "../../context/AuthContext";
-import CanonicalProductsTable from "../../components/CanonicalProductsTable";
-import ProductFormModal from "../../components/ProductFormModal";
+import AdminLayout from "../../../components/AdminLayout";
+import { useAuth } from "../../../context/AuthContext";
+import CanonicalProductsTable from "../../../components/CanonicalProductsTable";
+import ProductFormModal from "../../../components/ProductFormModal";
 
 interface Suggestion {
   id: string;
@@ -101,43 +101,43 @@ function CanonicosPage() {
 
   return (
     <AdminLayout>
-      <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-6">Gerenciamento de Produtos Canônicos</h1>
+      <div class="container mx-auto p-4">
+        <h1 class="text-2xl font-bold mb-6">Gerenciamento de Produtos Canônicos</h1>
         
-        <div className="bg-white p-4 rounded shadow-md mb-6">
-          <h2 className="text-xl font-semibold mb-4">Sugestões Pendentes</h2>
+        <div class="bg-white p-4 rounded shadow-md mb-6">
+          <h2 class="text-xl font-semibold mb-4">Sugestões Pendentes</h2>
           {loadingSuggestions ? (
-             <div className="text-center p-10">Carregando sugestões...</div>
+             <div class="text-center p-10">Carregando sugestões...</div>
           ) : errorSuggestions ? (
-            <div className="text-center p-10 text-red-500">Erro ao carregar sugestões: {errorSuggestions}</div>
+            <div class="text-center p-10 text-red-500">Erro ao carregar sugestões: {errorSuggestions}</div>
           ) : suggestions.length === 0 ? (
-            <p className="text-gray-600">Nenhuma sugestão pendente no momento.</p>
+            <p class="text-gray-600">Nenhuma sugestão pendente no momento.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white">
+            <div class="overflow-x-auto">
+              <table class="min-w-full bg-white">
                 <thead>
                   <tr>
-                    <th className="py-2 px-4 border-b text-left">ID</th>
-                    <th className="py-2 px-4 border-b text-left">Termo</th>
-                    <th className="py-2 px-4 border-b text-left">Origem</th>
-                    <th className="py-2 px-4 border-b text-left">Status</th>
-                    <th className="py-2 px-4 border-b text-left">Criado Em</th>
-                    <th className="py-2 px-4 border-b text-left">Ações</th>
+                    <th class="py-2 px-4 border-b text-left">ID</th>
+                    <th class="py-2 px-4 border-b text-left">Termo</th>
+                    <th class="py-2 px-4 border-b text-left">Origem</th>
+                    <th class="py-2 px-4 border-b text-left">Status</th>
+                    <th class="py-2 px-4 border-b text-left">Criado Em</th>
+                    <th class="py-2 px-4 border-b text-left">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {suggestions.map((s) => (
-                    <tr key={s.id} className="hover:bg-gray-100">
-                      <td className="py-2 px-4 border-b text-sm">{s.id}</td>
-                      <td className="py-2 px-4 border-b text-sm">{s.term}</td>
-                      <td className="py-2 px-4 border-b text-sm">{s.source}</td>
-                      <td className="py-2 px-4 border-b text-sm">{s.status}</td>
-                      <td className="py-2 px-4 border-b text-sm">{new Date(s.created_at).toLocaleString()}</td>
-                      <td className="py-2 px-4 border-b text-sm">
-                        <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs mr-2">
+                    <tr key={s.id} class="hover:bg-gray-100">
+                      <td class="py-2 px-4 border-b text-sm">{s.id}</td>
+                      <td class="py-2 px-4 border-b text-sm">{s.term}</td>
+                      <td class="py-2 px-4 border-b text-sm">{s.source}</td>
+                      <td class="py-2 px-4 border-b text-sm">{s.status}</td>
+                      <td class="py-2 px-4 border-b text-sm">{new Date(s.created_at).toLocaleString()}</td>
+                      <td class="py-2 px-4 border-b text-sm">
+                        <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs mr-2">
                           Buscar Produtos
                         </button>
-                        <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">
+                        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">
                           Rejeitar
                         </button>
                       </td>
@@ -149,12 +149,12 @@ function CanonicosPage() {
           )}
         </div>
 
-        <div className="bg-white p-4 rounded shadow-md">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Catálogo Canônico</h2>
+        <div class="bg-white p-4 rounded shadow-md">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl font-semibold">Catálogo Canônico</h2>
             <button
               onClick={handleCreateProductClick}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
             >
               Adicionar Novo Produto
             </button>

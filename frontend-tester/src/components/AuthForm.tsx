@@ -14,13 +14,19 @@ export default function AuthForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin, loading: authLoading } = useAuth(); // Get isAdmin and authLoading
 
   useEffect(() => {
-    if (currentUser) {
-      router.push("/healthcheck"); // Redirect to healthcheck page if already logged in
+    if (!authLoading && currentUser) { // Check after authLoading is complete
+      if (isAdmin) {
+        router.push("/admin/dashboard"); // Redirect admins to dashboard
+      } else {
+        // If a non-admin is already logged in and lands here,
+        // they will just see the login form. No redirect needed.
+        // The AdminLayout will handle redirecting them if they try to access admin pages.
+      }
     }
-  }, [currentUser, router]);
+  }, [currentUser, isAdmin, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,24 +34,34 @@ export default function AuthForm() {
     setLoading(true);
 
     try {
+      let userCredential;
       if (isLogin) {
         if (!auth) {
           setError("Firebase authentication is not available.");
           setLoading(false);
           return;
         }
-        await signInWithEmailAndPassword(auth, email, password);
-        console.log("Logged in successfully!");
+        userCredential = await signInWithEmailAndPassword(auth, email, password);
       } else {
         if (!auth) {
           setError("Firebase authentication is not available.");
           setLoading(false);
           return;
         }
-        await createUserWithEmailAndPassword(auth, email, password);
-        console.log("Registered successfully!");
+        userCredential = await createUserWithEmailAndPassword(auth, email, password);
       }
-      router.push("/healthcheck"); // Redirect after successful login/registration
+
+      // After successful login/registration, check admin claim
+      const tokenResult = await userCredential.user.getIdTokenResult();
+      if (tokenResult.claims.admin === true) {
+        router.push("/admin/dashboard"); // Redirect admin to dashboard
+      } else {
+        setError("Você não tem permissão para acessar este painel.");
+        // Sign out non-admin users to prevent them from being stuck in a logged-in state
+        if (auth) {
+          await auth.signOut();
+        }
+      }
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
@@ -75,8 +91,7 @@ export default function AuthForm() {
               id="email"
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              onChange={(e) => setEmail(e.target.value)}              required
             />
           </div>
           <div>
@@ -88,8 +103,7 @@ export default function AuthForm() {
               id="password"
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
+              onChange={(e) => setPassword(e.target.value)}              required
             />
           </div>
           {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -111,16 +125,7 @@ export default function AuthForm() {
             {isLogin ? "Register" : "Login"}
           </button>
         </p>
-        {currentUser && (
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => router.push("/healthcheck")}
-              className="font-medium text-indigo-600 hover:text-indigo-500"
-            >
-              Go to Health Check
-            </button>
-          </div>
-        )}
+        {/* Removed the "Go to Health Check" button as it's now handled by redirects */}
       </div>
     </div>
   );
