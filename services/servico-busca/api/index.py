@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv(dotenv_path='.env.local')
+
 import os
 import json
 from flask import Flask, request, jsonify
@@ -45,13 +48,18 @@ else:
 # --- Elasticsearch Configuration ---
 es = None
 try:
-    es_host_url = os.environ.get('ELASTIC_HOST')
-    es_api_key = os.environ.get('ELASTIC_API_KEY')
-    if es_host_url and es_api_key:
+    es_url = os.environ.get('ELASTICSEARCH_URL') # For local Docker
+    es_host_url = os.environ.get('ELASTIC_HOST')   # For cloud
+    es_api_key = os.environ.get('ELASTIC_API_KEY') # For cloud
+
+    if es_url:
+        es = Elasticsearch(hosts=[es_url])
+        print("Elasticsearch inicializado com sucesso via ELASTICSEARCH_URL (local).")
+    elif es_host_url and es_api_key:
         es = Elasticsearch(hosts=[es_host_url], api_key=es_api_key)
-        print("Elasticsearch inicializado com sucesso via ELASTIC_HOST.")
+        print("Elasticsearch inicializado com sucesso via ELASTIC_HOST (cloud).")
     else:
-        es_init_error = "Variáveis de ambiente para conexão cloud com Elasticsearch não encontradas."
+        es_init_error = "Variáveis de ambiente para conexão com Elasticsearch não encontradas."
         print(es_init_error)
 except Exception as e:
     es_init_error = str(e)
@@ -61,21 +69,34 @@ except Exception as e:
 kafka_consumer_instance = None
 if Consumer:
     try:
-        kafka_conf = {
-            'bootstrap.servers': os.environ.get('KAFKA_BOOTSTRAP_SERVER'),
-            'group.id': 'search_service_group_cron_v2', # Novo group.id para garantir que ele leia eventos não lidos
-            'auto.offset.reset': 'earliest',
-            'security.protocol': 'SASL_SSL',
-            'sasl.mechanisms': 'PLAIN',
-            'sasl.username': os.environ.get('KAFKA_API_KEY'),
-            'sasl.password': os.environ.get('KAFKA_API_SECRET')
-        }
-        if kafka_conf['bootstrap.servers']:
+        kafka_bootstrap_server = os.environ.get('KAFKA_BOOTSTRAP_SERVER')
+        if kafka_bootstrap_server:
+            kafka_api_key = os.environ.get('KAFKA_API_KEY')
+            if kafka_api_key:
+                # Cloud Kafka configuration
+                print("Configurando consumidor Kafka para ambiente de nuvem (SASL)...")
+                kafka_conf = {
+                    'bootstrap.servers': kafka_bootstrap_server,
+                    'group.id': 'search_service_group_cron_v2',
+                    'auto.offset.reset': 'earliest',
+                    'security.protocol': 'SASL_SSL',
+                    'sasl.mechanisms': 'PLAIN',
+                    'sasl.username': kafka_api_key,
+                    'sasl.password': os.environ.get('KAFKA_API_SECRET')
+                }
+            else:
+                # Local Docker Kafka configuration
+                print("Configurando consumidor Kafka para ambiente local (sem SASL)...")
+                kafka_conf = {
+                    'bootstrap.servers': kafka_bootstrap_server,
+                    'group.id': 'search_service_group_cron_v2',
+                    'auto.offset.reset': 'earliest'
+                }
             kafka_consumer_instance = Consumer(kafka_conf)
             kafka_consumer_instance.subscribe(['eventos_usuarios', 'eventos_produtos', 'eventos_lojas', 'eventos_ofertas'])
             print("Consumidor Kafka inicializado com sucesso.")
         else:
-            kafka_consumer_init_error = "Variáveis de ambiente do Kafka não encontradas para o consumidor."
+            kafka_consumer_init_error = "Variável de ambiente KAFKA_BOOTSTRAP_SERVER não encontrada para o consumidor."
             print(kafka_consumer_init_error)
     except Exception as e:
         kafka_consumer_init_error = str(e)

@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv(dotenv_path='.env.local')
+
 import os
 import json
 import base64
@@ -60,18 +63,29 @@ def get_producer():
     global producer
     if producer is None and Producer:
         try:
-            kafka_conf = {
-                'bootstrap.servers': os.environ.get('KAFKA_BOOTSTRAP_SERVER'),
-                'security.protocol': 'SASL_SSL',
-                'sasl.mechanisms': 'PLAIN',
-                'sasl.username': os.environ.get('KAFKA_API_KEY'),
-                'sasl.password': os.environ.get('KAFKA_API_SECRET')
-            }
-            if kafka_conf['bootstrap.servers']:
+            kafka_bootstrap_server = os.environ.get('KAFKA_BOOTSTRAP_SERVER')
+            if kafka_bootstrap_server:
+                kafka_api_key = os.environ.get('KAFKA_API_KEY')
+                if kafka_api_key:
+                    # Cloud Kafka configuration
+                    print("Configurando produtor Kafka para ambiente de nuvem (SASL)...")
+                    kafka_conf = {
+                        'bootstrap.servers': kafka_bootstrap_server,
+                        'security.protocol': 'SASL_SSL',
+                        'sasl.mechanisms': 'PLAIN',
+                        'sasl.username': kafka_api_key,
+                        'sasl.password': os.environ.get('KAFKA_API_SECRET')
+                    }
+                else:
+                    # Local Docker Kafka configuration
+                    print("Configurando produtor Kafka para ambiente local (sem SASL)...")
+                    kafka_conf = {
+                        'bootstrap.servers': kafka_bootstrap_server
+                    }
                 producer = Producer(kafka_conf)
                 print("Produtor Kafka inicializado com sucesso (lazy).")
             else:
-                initialization_errors["kafka_producer"] = "Variáveis de ambiente do Kafka não encontradas."
+                initialization_errors["kafka_producer"] = "Variável de ambiente KAFKA_BOOTSTRAP_SERVER não encontrada."
         except Exception as e:
             print(f"DEBUG: Kafka Producer initialization failed: {e}")
             initialization_errors["kafka_producer"] = str(e)
@@ -83,16 +97,29 @@ def get_kafka_consumer():
     global kafka_consumer_instance
     if kafka_consumer_instance is None and Consumer:
         try:
-            kafka_conf = {
-                'bootstrap.servers': os.environ.get('KAFKA_BOOTSTRAP_SERVER'),
-                'group.id': 'ai_agents_group_v1',
-                'auto.offset.reset': 'earliest',
-                'security.protocol': 'SASL_SSL',
-                'sasl.mechanisms': 'PLAIN',
-                'sasl.username': os.environ.get('KAFKA_API_KEY'),
-                'sasl.password': os.environ.get('KAFKA_API_SECRET')
-            }
-            if kafka_conf['bootstrap.servers']:
+            kafka_bootstrap_server = os.environ.get('KAFKA_BOOTSTRAP_SERVER')
+            if kafka_bootstrap_server:
+                kafka_api_key = os.environ.get('KAFKA_API_KEY')
+                if kafka_api_key:
+                    # Cloud Kafka configuration
+                    print("Configurando consumidor Kafka para ambiente de nuvem (SASL)...")
+                    kafka_conf = {
+                        'bootstrap.servers': kafka_bootstrap_server,
+                        'group.id': 'ai_agents_group_v1',
+                        'auto.offset.reset': 'earliest',
+                        'security.protocol': 'SASL_SSL',
+                        'sasl.mechanisms': 'PLAIN',
+                        'sasl.username': kafka_api_key,
+                        'sasl.password': os.environ.get('KAFKA_API_SECRET')
+                    }
+                else:
+                    # Local Docker Kafka configuration
+                    print("Configurando consumidor Kafka para ambiente local (sem SASL)...")
+                    kafka_conf = {
+                        'bootstrap.servers': kafka_bootstrap_server,
+                        'group.id': 'ai_agents_group_v1',
+                        'auto.offset.reset': 'earliest'
+                    }
                 kafka_consumer_instance = Consumer(kafka_conf)
                 kafka_consumer_instance.subscribe(['tarefas_ia'])
                 print("Consumidor Kafka inicializado com sucesso (lazy).")

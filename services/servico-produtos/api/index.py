@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv(dotenv_path='.env.local')
+
 import os
 import json
 import requests
@@ -18,6 +21,60 @@ db = None
 producer = None
 firebase_init_error = None
 kafka_producer_init_error = None
+
+# --- Inicialização do Firebase Admin SDK (PADRONIZADO) ---
+if firebase_admin:
+    try:
+        base64_sdk = os.environ.get('FIREBASE_ADMIN_SDK_BASE64')
+        if base64_sdk:
+            decoded_sdk = base64.b64decode(base64_sdk).decode('utf-8')
+            cred_dict = json.loads(decoded_sdk)
+            cred = credentials.Certificate(cred_dict)
+            if not firebase_admin._apps:
+                firebase_admin.initialize_app(cred)
+            db = firestore.client()
+            print("Firebase inicializado com sucesso via Base64.")
+        else:
+            firebase_init_error = "Variável de ambiente FIREBASE_ADMIN_SDK_BASE64 não encontrada."
+            print(firebase_init_error)
+    except Exception as e:
+        firebase_init_error = str(e)
+        print(f"Erro ao inicializar o Firebase Admin SDK: {e}")
+else:
+    firebase_init_error = "Biblioteca firebase_admin não encontrada."
+
+# --- Configuração do Kafka Producer ---
+if Producer:
+    try:
+        kafka_bootstrap_server = os.environ.get('KAFKA_BOOTSTRAP_SERVER')
+        if kafka_bootstrap_server:
+            kafka_api_key = os.environ.get('KAFKA_API_KEY')
+            if kafka_api_key:
+                # Cloud Kafka configuration
+                print("Configurando produtor Kafka para ambiente de nuvem (SASL)...")
+                kafka_conf = {
+                    'bootstrap.servers': kafka_bootstrap_server,
+                    'security.protocol': 'SASL_SSL',
+                    'sasl.mechanisms': 'PLAIN',
+                    'sasl.username': kafka_api_key,
+                    'sasl.password': os.environ.get('KAFKA_API_SECRET')
+                }
+            else:
+                # Local Docker Kafka configuration
+                print("Configurando produtor Kafka para ambiente local (sem SASL)...")
+                kafka_conf = {
+                    'bootstrap.servers': kafka_bootstrap_server
+                }
+            producer = Producer(kafka_conf)
+            print("Produtor Kafka inicializado com sucesso.")
+        else:
+            kafka_producer_init_error = "Variável de ambiente KAFKA_BOOTSTRAP_SERVER não encontrada."
+            print(kafka_producer_init_error)
+    except Exception as e:
+        kafka_producer_init_error = str(e)
+        print(f"Erro ao inicializar Produtor Kafka: {e}")
+else:
+    kafka_producer_init_error = "Biblioteca confluent_kafka não encontrada."
 
 # --- Funções Auxiliares  ---
 

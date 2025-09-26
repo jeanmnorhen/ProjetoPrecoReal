@@ -3,3 +3,4 @@ pytest
 pytest-mock
 Flask-Cors
 requests
+python-dotenv

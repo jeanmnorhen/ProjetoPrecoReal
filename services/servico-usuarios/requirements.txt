@@ -7,3 +7,4 @@ GeoAlchemy2
 Flask-Cors
 pytest
 pytest-mock
+python-dotenv

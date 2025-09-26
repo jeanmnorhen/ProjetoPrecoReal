@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv(dotenv_path='.env.local')
+
 import os
 import json
 import base64
@@ -72,14 +75,25 @@ else:
 producer = None
 if Producer:
     try:
-        kafka_conf = {
-            'bootstrap.servers': os.environ.get('KAFKA_BOOTSTRAP_SERVER'),
-            'security.protocol': 'SASL_SSL',
-            'sasl.mechanisms': 'PLAIN',
-            'sasl.username': os.environ.get('KAFKA_API_KEY'),
-            'sasl.password': os.environ.get('KAFKA_API_SECRET')
-        }
-        if kafka_conf['bootstrap.servers']:
+        kafka_bootstrap_server = os.environ.get('KAFKA_BOOTSTRAP_SERVER')
+        if kafka_bootstrap_server:
+            kafka_api_key = os.environ.get('KAFKA_API_KEY')
+            if kafka_api_key:
+                # Cloud Kafka configuration
+                print("Configurando produtor Kafka para ambiente de nuvem (SASL)...")
+                kafka_conf = {
+                    'bootstrap.servers': kafka_bootstrap_server,
+                    'security.protocol': 'SASL_SSL',
+                    'sasl.mechanisms': 'PLAIN',
+                    'sasl.username': kafka_api_key,
+                    'sasl.password': os.environ.get('KAFKA_API_SECRET')
+                }
+            else:
+                # Local Docker Kafka configuration
+                print("Configurando produtor Kafka para ambiente local (sem SASL)...")
+                kafka_conf = {
+                    'bootstrap.servers': kafka_bootstrap_server
+                }
             producer = Producer(kafka_conf)
             print("Produtor Kafka inicializado com sucesso.")
         else:

@@ -4,3 +4,4 @@ firebase-admin
 confluent-kafka
 Flask-Cors
 requests
+python-dotenv

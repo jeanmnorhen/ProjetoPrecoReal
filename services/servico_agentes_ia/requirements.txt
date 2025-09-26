@@ -4,3 +4,4 @@ google-generativeai
 Flask-Cors
 Pillow
 firebase-admin
+python-dotenv

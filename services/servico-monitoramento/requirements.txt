@@ -2,3 +2,4 @@ Flask
 influxdb-client
 confluent-kafka
 Flask-Cors
+python-dotenv

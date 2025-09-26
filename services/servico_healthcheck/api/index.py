@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv(dotenv_path='.env.local')
+
 import os
 import requests
 from flask import Flask, jsonify

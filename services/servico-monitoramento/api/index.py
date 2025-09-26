@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv(dotenv_path='.env.local')
+
 import os
 import json
 from datetime import datetime, timezone
@@ -39,16 +42,29 @@ except Exception as e:
 kafka_consumer_instance = None
 if Consumer:
     try:
-        kafka_conf = {
-            'bootstrap.servers': os.environ.get('KAFKA_BOOTSTRAP_SERVER'),
-            'group.id': 'monitoring_service_group_v2', # Use a unique group.id
-            'auto.offset.reset': 'earliest',
-            'security.protocol': 'SASL_SSL',
-            'sasl.mechanisms': 'PLAIN',
-            'sasl.username': os.environ.get('KAFKA_API_KEY'),
-            'sasl.password': os.environ.get('KAFKA_API_SECRET')
-        }
-        if kafka_conf['bootstrap.servers']:
+        kafka_bootstrap_server = os.environ.get('KAFKA_BOOTSTRAP_SERVER')
+        if kafka_bootstrap_server:
+            kafka_api_key = os.environ.get('KAFKA_API_KEY')
+            if kafka_api_key:
+                # Cloud Kafka configuration
+                print("Configurando consumidor Kafka para ambiente de nuvem (SASL)...")
+                kafka_conf = {
+                    'bootstrap.servers': kafka_bootstrap_server,
+                    'group.id': 'monitoring_service_group_v2',
+                    'auto.offset.reset': 'earliest',
+                    'security.protocol': 'SASL_SSL',
+                    'sasl.mechanisms': 'PLAIN',
+                    'sasl.username': kafka_api_key,
+                    'sasl.password': os.environ.get('KAFKA_API_SECRET')
+                }
+            else:
+                # Local Docker Kafka configuration
+                print("Configurando consumidor Kafka para ambiente local (sem SASL)...")
+                kafka_conf = {
+                    'bootstrap.servers': kafka_bootstrap_server,
+                    'group.id': 'monitoring_service_group_v2',
+                    'auto.offset.reset': 'earliest'
+                }
             kafka_consumer_instance = Consumer(kafka_conf)
             kafka_consumer_instance.subscribe(['eventos_ofertas'])
             print("Consumidor Kafka inicializado com sucesso.")

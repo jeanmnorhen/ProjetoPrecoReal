@@ -3,3 +3,4 @@ elasticsearch
 confluent-kafka
 Flask-Cors
 firebase-admin
+python-dotenv
