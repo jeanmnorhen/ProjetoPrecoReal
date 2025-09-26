@@ -32,11 +32,15 @@ runs:
       if: steps.check_changes.outputs.should_deploy == 'true'
       shell: bash
       run: |
-        set -e # Exit immediately if a command exits with a non-zero status.
-        set -o pipefail # Return value of a pipeline is the value of the last (rightmost) command to exit with a non-zero status.
+        set -e
+        set -o pipefail
 
         echo "Navigating to ${{ inputs.service_path }}"
         cd ${{ inputs.service_path }}
+
+        echo "--- Linking Vercel Project ---"
+        vercel link --project ${{ inputs.vercel_project_name }} --token ${{ inputs.vercel_token }} --scope ${{ inputs.vercel_org_id }} --yes
+        echo "------------------------------"
         
         echo "--- Debugging Vercel CLI ---"
         which vercel || { echo "Error: Vercel CLI not found."; exit 1; }
