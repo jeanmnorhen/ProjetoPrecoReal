@@ -8,6 +8,7 @@ const navLinks = [
   { name: 'Dashboard', href: '/admin/dashboard' },
   { name: 'Críticas', href: '/admin/criticas' },
   { name: 'Catálogo', href: '/admin/canonicos' },
+  { name: 'Vitrine da Loja', href: '/admin/vitrine' },
   { name: 'Lojas', href: '/lojas' },
   { name: 'Usuários', href: '/usuarios' },
   { name: 'Monitoramento', href: '/monitoring' },

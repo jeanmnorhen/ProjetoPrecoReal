@@ -284,6 +284,79 @@ def delete_product(product_id):
     except Exception as e:
         return jsonify({"error": f"Erro ao deletar produto: {e}"}), 500
 
+@app.route('/api/products/from_canonical', methods=['POST'])
+def create_product_from_canonical():
+    if not db:
+        return jsonify({"error": "Dependência do Firestore não inicializada."}), 503
+
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Authorization token is required"}), 401
+
+    try:
+        id_token = auth_header.split('Bearer ')[1]
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token['uid']
+    except Exception as e:
+        return jsonify({"error": "Invalid or expired token", "details": str(e)}), 401
+
+    data = request.get_json()
+    canonical_product_id = data.get('canonical_product_id')
+    store_id = data.get('store_id')
+    price = data.get('price')
+
+    if not all([canonical_product_id, store_id, price]):
+        return jsonify({"error": "canonical_product_id, store_id, e price são obrigatórios."}), 400
+
+    # Check permission
+    allowed, reason = check_permission(uid, store_id)
+    if not allowed:
+        return jsonify({"error": "User is not authorized to add products to this store", "details": reason}), 403
+
+    try:
+        canonical_product_ref = db.collection('products').document(canonical_product_id)
+        canonical_product_doc = canonical_product_ref.get()
+        if not canonical_product_doc.exists:
+            return jsonify({"error": "Produto canônico não encontrado."}), 404
+        
+        canonical_product_data = canonical_product_doc.to_dict()
+
+        store_product_data = {
+            'canonical_product_id': canonical_product_id,
+            'store_id': store_id,
+            'price': float(price),
+            'name': canonical_product_data.get('name'),
+            'category': canonical_product_data.get('category'),
+            'description': canonical_product_data.get('description'),
+            'image_url': canonical_product_data.get('image_url'),
+            'barcode': canonical_product_data.get('barcode'),
+            'created_at': firestore.SERVER_TIMESTAMP,
+            'updated_at': firestore.SERVER_TIMESTAMP
+        }
+
+        products_ref = db.collection('products')
+        query = products_ref.where('canonical_product_id', '==', canonical_product_id).where('store_id', '==', store_id).limit(1)
+        existing_docs = list(query.stream())
+
+        if existing_docs:
+            existing_doc_ref = existing_docs[0].reference
+            existing_doc_ref.update({'price': float(price), 'updated_at': firestore.SERVER_TIMESTAMP})
+            product_id = existing_doc_ref.id
+            message = "Preço do produto atualizado na sua loja."
+            event_type = 'ProductUpdated'
+        else:
+            _, new_doc_ref = products_ref.add(store_product_data)
+            product_id = new_doc_ref.id
+            message = "Produto adicionado à sua loja com sucesso."
+            event_type = 'ProductCreated'
+
+        publish_event('eventos_produtos', event_type, product_id, store_product_data)
+
+        return jsonify({"message": message, "productId": product_id}), 201
+
+    except Exception as e:
+        return jsonify({"error": f"Erro ao adicionar produto à loja: {e}"}), 500
+
 def get_health_status():
     env_vars = {
         "FIREBASE_ADMIN_SDK_BASE64": "present" if os.environ.get('FIREBASE_ADMIN_SDK_BASE64') else "missing",
