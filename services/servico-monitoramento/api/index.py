@@ -10,6 +10,8 @@ from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 from confluent_kafka import Consumer, KafkaException
 
+import requests
+
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=['https://frontend-tester-1foc8lpkl-jeanmnorhens-projects.vercel.app'])
 
@@ -304,6 +306,50 @@ def health_check():
     http_status = 200 if all_ok else 503
     
     return jsonify(status), http_status
+
+@app.route('/api/metricas/gerais', methods=['GET'])
+def get_general_metrics():
+    # URLs from environment variables (set in .env.local)
+    servico_usuarios_url = os.environ.get('SERVICO_USUARIOS_URL')
+    servico_produtos_url = os.environ.get('SERVICO_PRODUTOS_URL')
+    
+    criticas_pendentes = 0
+    produtos_catalogo = 0
+    errors = {}
+
+    # Get pending critiques count
+    if servico_usuarios_url:
+        try:
+            # Assuming the /api/criticas endpoint returns a list
+            response = requests.get(f"{servico_usuarios_url}/api/criticas", timeout=5)
+            if response.ok:
+                criticas_pendentes = len(response.json())
+            else:
+                errors['criticas_service'] = f"Error {response.status_code}"
+        except requests.RequestException as e:
+            errors['criticas_service'] = str(e)
+    else:
+        errors['criticas_service'] = "SERVICO_USUARIOS_URL not set"
+
+    # Get canonical products count
+    if servico_produtos_url:
+        try:
+            # Assuming the /api/products endpoint returns a list under a 'products' key
+            response = requests.get(f"{servico_produtos_url}/api/products", timeout=5)
+            if response.ok:
+                produtos_catalogo = len(response.json().get('products', []))
+            else:
+                errors['produtos_service'] = f"Error {response.status_code}"
+        except requests.RequestException as e:
+            errors['produtos_service'] = str(e)
+    else:
+        errors['produtos_service'] = "SERVICO_PRODUTOS_URL not set"
+
+    return jsonify({
+        "pending_critiques_count": criticas_pendentes,
+        "canonical_products_count": produtos_catalogo,
+        "errors": errors if errors else "none"
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)

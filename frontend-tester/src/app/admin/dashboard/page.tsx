@@ -23,6 +23,7 @@ export default function DashboardPage() {
   const { idToken } = useAuth();
   const [usageMetrics, setUsageMetrics] = useState<UsageMetrics | null>(null);
   const [priceMetrics, setPriceMetrics] = useState<PriceMetrics | null>(null);
+  const [generalMetrics, setGeneralMetrics] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,20 +37,23 @@ export default function DashboardPage() {
 
       try {
         setLoading(true);
-        const [usageRes, priceRes] = await Promise.all([
+        const [usageRes, priceRes, generalRes] = await Promise.all([
           fetch(`${MONITORING_API_URL}/api/metricas/uso`, { headers: { Authorization: `Bearer ${idToken}` } }),
-          fetch(`${MONITORING_API_URL}/api/metricas/precos`, { headers: { Authorization: `Bearer ${idToken}` } })
+          fetch(`${MONITORING_API_URL}/api/metricas/precos`, { headers: { Authorization: `Bearer ${idToken}` } }),
+          fetch(`${MONITORING_API_URL}/api/metricas/gerais`, { headers: { Authorization: `Bearer ${idToken}` } })
         ]);
 
-        if (!usageRes.ok || !priceRes.ok) {
+        if (!usageRes.ok || !priceRes.ok || !generalRes.ok) {
           throw new Error('Falha ao buscar uma ou mais métricas.');
         }
 
         const usageData = await usageRes.json();
         const priceData = await priceRes.json();
+        const generalData = await generalRes.json();
 
         setUsageMetrics(usageData);
         setPriceMetrics(priceData);
+        setGeneralMetrics(generalData);
 
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Ocorreu um erro desconhecido.');
@@ -84,11 +88,11 @@ export default function DashboardPage() {
           />
           <StatCard 
             title="Críticas Pendentes" 
-            value="89" // Dado estático por enquanto
+            value={generalMetrics?.pending_critiques_count.toLocaleString() || 'N/A'}
           />
           <StatCard 
             title="Produtos no Catálogo" 
-            value="10,456" // Dado estático por enquanto
+            value={generalMetrics?.canonical_products_count.toLocaleString() || 'N/A'}
           />
         </div>
 
