@@ -31,7 +31,7 @@ runs:
       id: deploy
       if: steps.check_changes.outputs.should_deploy == 'true'
       shell: bash
-            run: |
+      run: |
               set -e # Exit immediately if a command exits with a non-zero status.
               set -o pipefail # Return value of a pipeline is the value of the last (rightmost) command to exit with a non-zero status.
       
