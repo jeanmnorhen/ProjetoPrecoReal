@@ -17,6 +17,7 @@ interface Product {
   category: string;
   barcode?: string;
   store_id?: string; // Canonical products won't have this
+  price?: number; // Price for store-specific products
 }
 
 interface AddToStoreState {
