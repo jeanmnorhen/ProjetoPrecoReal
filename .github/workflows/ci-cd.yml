@@ -221,7 +221,7 @@ jobs:
               fi
 
               echo "Setting $VAR_NAME for $TARGET_PROJECT"
-              vercel env rm $VAR_NAME --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} 2>/dev/null || true
+              yes | vercel env rm $VAR_NAME --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} 2>/dev/null || true
               vercel env add $VAR_NAME "$VAR_VALUE" --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }}
             done
             cd - # Return to previous directory (root)
