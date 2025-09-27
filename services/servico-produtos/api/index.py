@@ -16,7 +16,7 @@ import base64
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=['https://frontend-tester-1foc8lpkl-jeanmnorhens-projects.vercel.app'])
 
-# --- Global Dependencies_ _(initiali zed to None) ---
+# --- Global Dependencies_ _(initiali zed to None) --- 
 db = None
 producer = None
 firebase_init_error = None
