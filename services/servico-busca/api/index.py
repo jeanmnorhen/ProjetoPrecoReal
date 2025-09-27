@@ -17,7 +17,7 @@ except ImportError:
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=['https://frontend-tester-1foc8lpkl-jeanmnorhens-projects.vercel.app'])
 
-# --- Variáveis globais para erros de inicialização  ----
+# --- Variáveis globais para erros de inicialização ----
 firebase_init_error = None
 es_init_error = None
 kafka_consumer_init_error = None

@@ -159,6 +159,59 @@ jobs:
           vercel_org_id: ${{ secrets.VERCEL_ORG_ID }} 
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
+      - name: Update Environment Variables for All Services
+        shell: bash
+        run: |
+          PROJECTS=(
+            "servico-usuarios"
+            "servico-busca"
+            "servico-monitoramento"
+            "servicoagentes"
+            "servicolojas"
+            "servicoofertas"
+            "servico-produtos"
+            "servico-healthcheck"
+          )
+          ENV_VARS=(
+            "SERVICO_USUARIOS_URL"
+            "SERVICO_BUSCA_URL"
+            "SERVICO_MONITORAMENTO_URL"
+            "SERVICO_AGENTES_IA_URL"
+            "SERVICO_LOJAS_URL"
+            "SERVICO_OFERTAS_URL"
+            "SERVICO_PRODUTOS_URL"
+            "SERVICO_HEALTHCHECK_URL"
+          )
+          URLS=(
+            "${{ steps.deploy_servico_usuarios.outputs.url }}"
+            "${{ steps.deploy_servico_busca.outputs.url }}"
+            "${{ steps.deploy_servico_monitoramento.outputs.url }}"
+            "${{ steps.deploy_servico_agentes_ia.outputs.url }}"
+            "${{ steps.deploy_servico_lojas.outputs.url }}"
+            "${{ steps.deploy_servico_ofertas.outputs.url }}"
+            "${{ steps.deploy_servico_produtos.outputs.url }}"
+            "${{ steps.deploy_servico_healthcheck.outputs.url }}"
+          )
+
+          for TARGET_PROJECT in "${PROJECTS[@]}"; do
+            echo "--- Updating environment for project: $TARGET_PROJECT ---"
+            for i in ${!URLS[@]}; do
+              VAR_NAME=${ENV_VARS[$i]}
+              VAR_VALUE=${URLS[$i]}
+
+              if [[ -z "$VAR_VALUE" ]]; then
+                echo "Warning: URL for $VAR_NAME is empty. Skipping."
+                continue
+              fi
+
+              echo "Setting $VAR_NAME for $TARGET_PROJECT"
+              # Remove and re-add to ensure the value is updated
+              vercel env rm $VAR_NAME $TARGET_PROJECT --token=${{ secrets.VERCEL_TOKEN }} --yes 2>/dev/null || true
+              vercel env add $VAR_NAME "$VAR_VALUE" $TARGET_PROJECT --token=${{ secrets.VERCEL_TOKEN }} --yes
+            done
+          done
+
+
   update-frontend-and-deploy:
     runs-on: ubuntu-latest
     needs: deploy-microservices
