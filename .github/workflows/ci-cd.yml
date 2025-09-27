@@ -206,8 +206,8 @@ jobs:
 
               echo "Setting $VAR_NAME for $TARGET_PROJECT"
               # Remove and re-add to ensure the value is updated
-              vercel env rm $VAR_NAME $TARGET_PROJECT --token=${{ secrets.VERCEL_TOKEN }} 2>/dev/null || true
-              vercel env add $VAR_NAME "$VAR_VALUE" $TARGET_PROJECT --token=${{ secrets.VERCEL_TOKEN }}
+              vercel env rm $VAR_NAME $TARGET_PROJECT --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} 2>/dev/null || true
+              vercel env add $VAR_NAME "$VAR_VALUE" $TARGET_PROJECT --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }}
             done
           done
 
