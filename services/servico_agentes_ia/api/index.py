@@ -47,9 +47,9 @@ def get_db():
                 cred_dict = json.loads(decoded_sdk)
                 cred = credentials.Certificate(cred_dict)
                 if not firebase_admin._apps:
-                    firebase_admin.initialize_app(cred)
+                    firebase_admin.initialize_app(cred, {'storageBucket': os.environ.get('FIREBASE_STORAGE_BUCKET')})
                 db = firestore.client()
-                print("Firebase inicializado com sucesso (lazy).")
+                print("Firebase inicializado com sucesso (lazy). Firestore e Storage.")
             else:
                 initialization_errors["firebase"] = "Variável FIREBASE_ADMIN_SDK_BASE64 não encontrada."
         except Exception as e:
@@ -58,6 +58,17 @@ def get_db():
     elif not firebase_admin:
         initialization_errors["firebase"] = "Biblioteca firebase_admin não encontrada."
     return db
+
+def upload_image_to_firebase(image_base64: str, filename: str) -> str:
+    if not firebase_admin:
+        raise Exception("Firebase Admin SDK não inicializado.")
+    
+    bucket = firebase_admin.storage.bucket()
+    blob = bucket.blob(f"product_images/{filename}")
+    image_bytes = base64.b64decode(image_base64)
+    blob.upload_from_string(image_bytes, content_type='image/jpeg') # Assumindo JPEG, pode ser ajustado
+    blob.make_public()
+    return blob.public_url
 
 def get_producer():
     global producer
@@ -178,6 +189,27 @@ def publish_event(topic, event_type, task_id, data, changes=None):
         print(f"Evento '{event_type}' para a tarefa {task_id} publicado no tópico {topic}.")
     except Exception as e:
         print(f"Erro ao publicar evento Kafka: {e}")
+
+# --- Search Helper ---
+
+async def search_existing_product(search_term: str):
+    search_service_url = os.environ.get('SERVICO_BUSCA_URL')
+    if not search_service_url:
+        print("URL do serviço de busca não configurada.")
+        return None
+
+    try:
+        # Usando requests de forma síncrona por simplicidade, idealmente usaríamos httpx para async
+        response = requests.get(
+            f"{search_service_url}/api/search",
+            params={"q": search_term, "type": "canonical"},
+            timeout=5
+        )
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro ao contatar o serviço de busca: {e}")
+        return None
 
 # --- AI Agent Logic ---
 
@@ -363,6 +395,154 @@ def reject_suggestion(suggestion_id):
     except Exception as e:
         print(f"Erro ao rejeitar sugestão: {e}")
         return jsonify({"error": f"Erro ao rejeitar sugestão: {e}"}), 500
+
+@app.route('/api/agents/catalog-intake', methods=['POST'])
+def catalog_intake():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({"error": "Authorization header missing"}), 401
+    try:
+        id_token = auth_header.split('Bearer ')[1]
+        auth.verify_id_token(id_token)
+    except Exception as e:
+        return jsonify({"error": f"Invalid or expired token: {str(e)}"}), 401
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "Request body is missing"}), 400
+
+    text_query = data.get('text_query')
+    image_base64 = data.get('image_base64')
+    category_query = data.get('category_query')
+
+    if not text_query and not image_base64 and not category_query:
+        return jsonify({"error": "A requisição deve conter 'text_query', 'image_base64' ou 'category_query'"}), 400
+
+    # Lógica principal da rotina
+    try:
+        # Cenário 1: Category Query
+        if category_query:
+            model = get_gemini_model()
+            if not model:
+                return jsonify({"error": "Modelo de IA não inicializado"}), 503
+            
+            prompt_category = f"Liste 10 produtos populares na categoria '{category_query}', com nome e uma breve descrição. Formate a resposta como um JSON, uma lista de objetos com as chaves 'name' e 'description'."
+            response_category = model.generate_content(prompt_category)
+            cleaned_response_text = response_category.text.strip().replace('```json', '').replace('```', '')
+            suggested_products = json.loads(cleaned_response_text)
+
+            products_service_url = os.environ.get('SERVICO_PRODUTOS_URL')
+            if not products_service_url:
+                return jsonify({"error": "URL do serviço de produtos não configurada"}), 500
+
+            created_products_ids = []
+            for product_suggestion in suggested_products:
+                new_product_payload = {
+                    "name": product_suggestion.get('name'),
+                    "description": product_suggestion.get('description'),
+                    "category": category_query,
+                    "image_url": None # Gemini não gera imagem aqui
+                }
+                creation_response = requests.post(
+                    f"{products_service_url}/api/products/canonical",
+                    headers={"Authorization": auth_header, "Content-Type": "application/json"},
+                    json=new_product_payload
+                )
+                if creation_response.status_code == 201:
+                    created_products_ids.append(creation_response.json().get('productId'))
+                else:
+                    print(f"Erro ao criar produto da categoria {category_query}: {creation_response.text}")
+            
+            return jsonify({"message": f"Sugestões de produtos para a categoria '{category_query}' geradas e enviadas para aprovação.", "productIds": created_products_ids}), 202
+
+        # Passo 1: Busca (implementação inicial para text_query)
+        search_results = None
+        if text_query:
+            search_results = requests.get(f"{os.environ.get('SERVICO_BUSCA_URL')}/api/search", params={"q": text_query, "type": "canonical"}).json()
+        elif image_base64: # Se for imagem, tenta identificar o produto primeiro para buscar
+            model = get_gemini_model()
+            if not model:
+                return jsonify({"error": "Modelo de IA não inicializado"}), 503
+            image_bytes = base64.b64decode(image_base64)
+            img = Image.open(BytesIO(image_bytes))
+            prompt_identify = "Identifique o nome completo do produto principal nesta imagem, incluindo marca e volume/peso, se visível. Responda apenas com o nome do produto." 
+            response_identify = model.generate_content([prompt_identify, img])
+            identified_product_name = response_identify.text.strip()
+            if identified_product_name:
+                search_results = requests.get(f"{os.environ.get('SERVICO_BUSCA_URL')}/api/search", params={"q": identified_product_name, "type": "canonical"}).json()
+            else:
+                return jsonify({"error": "Não foi possível identificar o produto na imagem para busca."}), 400
+
+        if search_results and search_results.get('hits', 0) > 0:
+            # Lógica para produto encontrado
+            product_id = search_results['products'][0]['id'] # Assume o primeiro resultado como o mais relevante
+            product_name = search_results['products'][0]['name']
+
+            if image_base64:
+                # Upload da nova imagem e adição como candidata
+                filename = f"{product_id}_{datetime.now(timezone.utc).timestamp()}.jpg"
+                uploaded_image_url = upload_image_to_firebase(image_base64, filename)
+
+                products_service_url = os.environ.get('SERVICO_PRODUTOS_URL')
+                if not products_service_url:
+                    return jsonify({"error": "URL do serviço de produtos não configurada"}), 500
+
+                add_image_response = requests.post(
+                    f"{products_service_url}/api/products/{product_id}/images",
+                    headers={"Authorization": auth_header, "Content-Type": "application/json"},
+                    json={'image_url': uploaded_image_url, 'source': 'image_analysis'}
+                )
+
+                if add_image_response.status_code != 201:
+                    return jsonify({"error": "Falha ao adicionar imagem candidata", "details": add_image_response.text}), 500
+
+                return jsonify({"message": "Produto existente encontrado. Nova imagem adicionada para revisão.", "productId": product_id, "imageUrl": uploaded_image_url}), 200
+            else:
+                return jsonify({"message": "Produto encontrado no catálogo.", "product": search_results['products'][0]}), 200
+
+        # Passo 2: Se não encontrado, gerar com IA
+        model = get_gemini_model()
+        if not model:
+            return jsonify({"error": "Modelo de IA não inicializado"}), 503
+
+        generated_image_url = None
+        if image_base64:
+            # Upload da imagem original para o Firebase Storage
+            filename = f"new_product_{datetime.now(timezone.utc).timestamp()}.jpg"
+            generated_image_url = upload_image_to_firebase(image_base64, filename)
+            # O prompt para Gemini já está na lógica abaixo
+            prompt_gemini = ["Gere nome, uma lista de 3 categorias relevantes (da mais genérica para a mais específica), e uma descrição técnica para o produto principal nesta imagem. Formate a resposta como um JSON com as chaves 'name', 'categories', e 'description'.", img]
+        else: # text_query
+            prompt_gemini = f"Gere nome, uma lista de 3 categorias relevantes (da mais genérica para a mais específica), e uma descrição técnica para o produto: '{text_query}'. Formate a resposta como um JSON com as chaves 'name', 'categories', e 'description'."
+
+        response = model.generate_content(prompt_gemini)
+        cleaned_response_text = response.text.strip().replace('```json', '').replace('```', '')
+        product_details = json.loads(cleaned_response_text)
+
+        products_service_url = os.environ.get('SERVICO_PRODUTOS_URL')
+        if not products_service_url:
+            return jsonify({"error": "URL do serviço de produtos não configurada"}), 500
+
+        new_product_payload = {
+            "name": product_details.get('name'),
+            "description": product_details.get('description'),
+            "category": ",".join(product_details.get('categories', [])),
+            "image_url": generated_image_url # Adiciona a URL da imagem gerada
+        }
+
+        creation_response = requests.post(
+            f"{products_service_url}/api/products/canonical",
+            headers={"Authorization": auth_header, "Content-Type": "application/json"},
+            json=new_product_payload
+        )
+
+        if creation_response.status_code != 201:
+            return jsonify({"error": "Falha ao criar produto canônico pendente", "details": creation_response.text}), 500
+
+        return jsonify({"message": "Novo produto gerado pela IA e enviado para aprovação.", "details": creation_response.json()}), 202
+
+    except Exception as e:
+        return jsonify({"error": f"Erro no processo de catalogação: {str(e)}"}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health_check():

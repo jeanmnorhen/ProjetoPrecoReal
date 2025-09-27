@@ -6,8 +6,9 @@ import { usePathname } from 'next/navigation';
 
 const navLinks = [
   { name: 'Dashboard', href: '/admin/dashboard' },
+  { name: 'Alimentador de Catálogo', href: '/admin/canonicos' },
+  { name: 'Produtos Pendentes', href: '/admin/pending-products' },
   { name: 'Críticas', href: '/admin/criticas' },
-  { name: 'Catálogo', href: '/admin/canonicos' },
   { name: 'Vitrine da Loja', href: '/admin/vitrine' },
   { name: 'Lojas', href: '/lojas' },
   { name: 'Usuários', href: '/usuarios' },

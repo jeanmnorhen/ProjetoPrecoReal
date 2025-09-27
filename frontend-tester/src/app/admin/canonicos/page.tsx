@@ -4,17 +4,8 @@
 import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "../../../components/AdminLayout";
 import { useAuth } from "../../../context/AuthContext";
-import CanonicalProductsTable from "../../../components/CanonicalProductsTable";
-import ProductFormModal from "../../../components/ProductFormModal";
-
-interface Suggestion {
-  id: string;
-  term: string;
-  source: string;
-  status: string;
-  created_at: string; // ISO string
-  task_id?: string;
-}
+// import CanonicalProductsTable from "../../../components/CanonicalProductsTable"; // Removido, será substituído
+// import ProductFormModal from "../../../components/ProductFormModal"; // Removido, será substituído
 
 interface Product {
   id?: string;
@@ -25,152 +16,169 @@ interface Product {
   image_url?: string;
 }
 
-const AGENTS_API_URL = process.env.NEXT_PUBLIC_AGENTS_API_URL;
+const AGENTS_API_URL = process.env.NEXT_PUBLIC_AI_API_URL; // Usar NEXT_PUBLIC_AI_API_URL
 
-function CanonicosPage() {
+export default function CatalogFeederPage() {
   const { idToken } = useAuth();
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(true);
-  const [errorSuggestions, setErrorSuggestions] = useState<string | null>(null);
+  const [textQuery, setTextQuery] = useState("");
+  const [categoryQuery, setCategoryQuery] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | undefined>(undefined);
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setImageFile(e.target.files[0]);
+    }
+  };
 
-  const fetchSuggestions = useCallback(async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProcessing(true);
+    setResult(null);
+    setError(null);
+
     if (!idToken) {
-      setErrorSuggestions("Token de autenticação não disponível.");
-      setLoadingSuggestions(false);
+      setError("Token de autenticação não disponível.");
+      setProcessing(false);
       return;
     }
     if (!AGENTS_API_URL) {
-      setErrorSuggestions("URL da API de Agentes não configurada.");
-      setLoadingSuggestions(false);
+      setError("URL da API de Agentes de IA não configurada.");
+      setProcessing(false);
       return;
     }
 
+    const payload: any = {};
+    if (textQuery) {
+      payload.text_query = textQuery;
+    } else if (categoryQuery) {
+      payload.category_query = categoryQuery;
+    } else if (imageFile) {
+      const reader = new FileReader();
+      reader.readAsDataURL(imageFile);
+      reader.onloadend = async () => {
+        const base64Image = reader.result?.toString().split(',')[1];
+        if (base64Image) {
+          payload.image_base64 = base64Image;
+          await sendRequest(payload);
+        } else {
+          setError("Falha ao ler a imagem.");
+          setProcessing(false);
+        }
+      };
+      return; // Retorna para aguardar o FileReader
+    } else {
+      setError("Por favor, forneça um texto, categoria ou imagem.");
+      setProcessing(false);
+      return;
+    }
+
+    await sendRequest(payload);
+  };
+
+  const sendRequest = async (payload: any) => {
     try {
-      const response = await fetch(`${AGENTS_API_URL}/api/agents/suggestions`, {
+      const response = await fetch(`${AGENTS_API_URL}/api/agents/catalog-intake`, {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${idToken}`,
         },
+        body: JSON.stringify(payload),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
       }
-
-      const data: Suggestion[] = await response.json();
-      setSuggestions(data);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setErrorSuggestions(err.message);
-      } else {
-        setErrorSuggestions("An unknown error occurred");
-      }
+      setResult(data);
+    } catch (err: any) {
+      setError(err.message || "Ocorreu um erro desconhecido.");
     } finally {
-      setLoadingSuggestions(false);
+      setProcessing(false);
     }
-  }, [idToken]);
-
-  useEffect(() => {
-    fetchSuggestions();
-  }, [fetchSuggestions]);
-
-  const handleCreateProductClick = () => {
-    setSelectedProduct(undefined); // Clear any previously selected product
-    setIsModalOpen(true);
-  };
-
-  const handleEditProduct = (product: Product) => {
-    setSelectedProduct(product);
-    setIsModalOpen(true);
-  };
-
-  const handleModalClose = () => {
-    setIsModalOpen(false);
-    setSelectedProduct(undefined);
-    // No need to refetch products here, CanonicalProductsTable will manage its own state
-  };
-
-  const handleProductSaved = () => {
-    // This callback will be passed to ProductFormModal and called after a product is saved.
-    // It will trigger a refresh of the CanonicalProductsTable.
-    // The CanonicalProductsTable component will handle its own data fetching.
   };
 
   return (
     <AdminLayout>
       <div className="container mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-6">Gerenciamento de Produtos Canônicos</h1>
-        
-        <div className="bg-white p-4 rounded shadow-md mb-6">
-          <h2 className="text-xl font-semibold mb-4">Sugestões Pendentes</h2>
-          {loadingSuggestions ? (
-             <div className="text-center p-10">Carregando sugestões...</div>
-          ) : errorSuggestions ? (
-            <div className="text-center p-10 text-red-500">Erro ao carregar sugestões: {errorSuggestions}</div>
-          ) : suggestions.length === 0 ? (
-            <p className="text-gray-600">Nenhuma sugestão pendente no momento.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full bg-white">
-                <thead>
-                  <tr>
-                    <th className="py-2 px-4 border-b text-left">ID</th>
-                    <th className="py-2 px-4 border-b text-left">Termo</th>
-                    <th className="py-2 px-4 border-b text-left">Origem</th>
-                    <th className="py-2 px-4 border-b text-left">Status</th>
-                    <th className="py-2 px-4 border-b text-left">Criado Em</th>
-                    <th className="py-2 px-4 border-b text-left">Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {suggestions.map((s) => (
-                    <tr key={s.id} className="hover:bg-gray-100">
-                      <td className="py-2 px-4 border-b text-sm">{s.id}</td>
-                      <td className="py-2 px-4 border-b text-sm">{s.term}</td>
-                      <td className="py-2 px-4 border-b text-sm">{s.source}</td>
-                      <td className="py-2 px-4 border-b text-sm">{s.status}</td>
-                      <td className="py-2 px-4 border-b text-sm">{new Date(s.created_at).toLocaleString()}</td>
-                      <td className="py-2 px-4 border-b text-sm">
-                        <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs mr-2">
-                          Buscar Produtos
-                        </button>
-                        <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">
-                          Rejeitar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <h1 className="text-2xl font-bold mb-6">Alimentador de Catálogo com IA</h1>
+
+        <div className="bg-white p-6 rounded shadow-md mb-6">
+          <h2 className="text-xl font-semibold mb-4">Adicionar/Atualizar Produto</h2>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="textQuery" className="block text-sm font-medium text-gray-700">Nome do Produto (Texto)</label>
+              <input
+                type="text"
+                id="textQuery"
+                value={textQuery}
+                onChange={(e) => { setTextQuery(e.target.value); setCategoryQuery(""); setImageFile(null); }}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                placeholder="Ex: Coca-Cola 2L"
+                disabled={processing}
+              />
             </div>
-          )}
-        </div>
-
-        <div className="bg-white p-4 rounded shadow-md">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Catálogo Canônico</h2>
+            <div>
+              <label htmlFor="categoryQuery" className="block text-sm font-medium text-gray-700">Categoria (para expandir)</label>
+              <input
+                type="text"
+                id="categoryQuery"
+                value={categoryQuery}
+                onChange={(e) => { setCategoryQuery(e.target.value); setTextQuery(""); setImageFile(null); }}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm"
+                placeholder="Ex: Refrigerantes"
+                disabled={processing}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-gray-500">OU</span>
+            </div>
+            <div>
+              <label htmlFor="imageUpload" className="block text-sm font-medium text-gray-700">Imagem do Produto</label>
+              <input
+                type="file"
+                id="imageUpload"
+                accept="image/*"
+                onChange={(e) => { handleImageChange(e); setTextQuery(""); setCategoryQuery(""); }}
+                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                disabled={processing}
+              />
+              {imageFile && <p className="mt-2 text-sm text-gray-500">Arquivo selecionado: {imageFile.name}</p>}
+            </div>
             <button
-              onClick={handleCreateProductClick}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+              type="submit"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-blue-400"
+              disabled={processing || (!textQuery && !imageFile && !categoryQuery)}
             >
-              Adicionar Novo Produto
+              {processing ? "Processando..." : "Enviar para Análise"}
             </button>
-          </div>
-          <CanonicalProductsTable onEditProduct={handleEditProduct} />
+          </form>
         </div>
-      </div>
 
-      <ProductFormModal
-        isOpen={isModalOpen}
-        onClose={handleModalClose}
-        onSave={handleProductSaved}
-        initialProduct={selectedProduct}
-      />
+        {processing && (
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6" role="alert">
+            <p className="font-bold">Processando...</p>
+            <p>Aguarde enquanto a IA analisa e processa sua solicitação.</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+            <p className="font-bold">Erro!</p>
+            <p>{error}</p>
+          </div>
+        )}
+
+        {result && (
+          <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
+            <p className="font-bold">Sucesso!</p>
+            <pre className="mt-2 text-sm text-green-800 overflow-auto">{JSON.stringify(result, null, 2)}</pre>
+          </div>
+        )}
+      </div>
     </AdminLayout>
   );
 }
-
-export default CanonicosPage;

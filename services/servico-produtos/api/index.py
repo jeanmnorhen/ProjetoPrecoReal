@@ -148,8 +148,146 @@ def list_all_products():
     except Exception as e:
         return jsonify({"error": f"Erro ao listar produtos: {e}"}), 500
 
-@app.route("/api/products", methods=["POST"])
-def create_product():
+@app.route('/api/products/pending', methods=['GET'])
+def list_pending_products():
+    if not db:
+        return jsonify({"error": "Dependência do Firestore não inicializada."}), 503
+
+    # Simple token verification for admin access
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({"error": "Authorization header missing"}), 401
+    try:
+        id_token = auth_header.split('Bearer ')[1]
+        # Here you might want to check for a custom claim 'admin' in a real scenario
+        auth.verify_id_token(id_token)
+    except Exception as e:
+        return jsonify({"error": f"Invalid or expired token: {str(e)}"}), 401
+
+    try:
+        products_ref = db.collection('products')
+        query = products_ref.where('status', '==', 'pending_approval')
+        docs = query.stream()
+        
+        pending_products = []
+        for doc in docs:
+            product_data = doc.to_dict()
+            product_data['id'] = doc.id
+            pending_products.append(product_data)
+            
+        return jsonify({"products": pending_products}), 200
+    except Exception as e:
+        return jsonify({"error": f"Erro ao listar produtos pendentes: {e}"}), 500
+
+@app.route('/api/products/<product_id>/approve', methods=['POST'])
+def approve_product(product_id):
+    if not db:
+        return jsonify({"error": "Dependência do Firestore não inicializada."}), 503
+
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({"error": "Authorization header missing"}), 401
+    try:
+        id_token = auth_header.split('Bearer ')[1]
+        auth.verify_id_token(id_token)
+        # Add admin claim check here for production
+    except Exception as e:
+        return jsonify({"error": f"Invalid or expired token: {str(e)}"}), 401
+
+    try:
+        product_ref = db.collection('products').document(product_id)
+        product_doc = product_ref.get()
+        if not product_doc.exists:
+            return jsonify({"error": "Produto não encontrado."}), 404
+
+        update_data = {
+            'status': 'approved',
+            'updated_at': firestore.SERVER_TIMESTAMP
+        }
+        product_ref.update(update_data)
+
+        publish_event('eventos_produtos', 'CanonicalProductApproved', product_id, update_data)
+        return jsonify({"message": "Produto aprovado com sucesso.", "productId": product_id}), 200
+    except Exception as e:
+        return jsonify({"error": f"Erro ao aprovar produto: {e}"}), 500
+
+@app.route('/api/products/<product_id>/reject', methods=['POST'])
+def reject_product(product_id):
+    if not db:
+        return jsonify({"error": "Dependência do Firestore não inicializada."}), 503
+
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({"error": "Authorization header missing"}), 401
+    try:
+        id_token = auth_header.split('Bearer ')[1]
+        auth.verify_id_token(id_token)
+        # Add admin claim check here for production
+    except Exception as e:
+        return jsonify({"error": f"Invalid or expired token: {str(e)}"}), 401
+
+    try:
+        product_ref = db.collection('products').document(product_id)
+        product_doc = product_ref.get()
+        if not product_doc.exists:
+            return jsonify({"error": "Produto não encontrado."}), 404
+
+        update_data = {
+            'status': 'rejected',
+            'updated_at': firestore.SERVER_TIMESTAMP
+        }
+        product_ref.update(update_data)
+
+        publish_event('eventos_produtos', 'CanonicalProductRejected', product_id, update_data)
+        return jsonify({"message": "Produto rejeitado com sucesso.", "productId": product_id}), 200
+    except Exception as e:
+        return jsonify({"error": f"Erro ao rejeitar produto: {e}"}), 500
+
+@app.route('/api/products/<product_id>/images', methods=['POST'])
+def add_product_image(product_id):
+    if not db:
+        return jsonify({"error": "Dependência do Firestore não inicializada."}), 503
+
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({"error": "Authorization header missing"}), 401
+    try:
+        id_token = auth_header.split('Bearer ')[1]
+        auth.verify_id_token(id_token)
+        # Add admin claim check here for production
+    except Exception as e:
+        return jsonify({"error": f"Invalid or expired token: {str(e)}"}), 401
+
+    data = request.get_json()
+    image_url = data.get('image_url')
+    source = data.get('source', 'manual_upload') # e.g., 'image_analysis', 'manual_upload'
+
+    if not image_url:
+        return jsonify({"error": "image_url é obrigatório."}), 400
+
+    try:
+        product_ref = db.collection('products').document(product_id)
+        if not product_ref.get().exists:
+            return jsonify({"error": "Produto não encontrado."}), 404
+
+        image_data = {
+            'image_url': image_url,
+            'source': source,
+            'status': 'pending_review', # Admin needs to approve it
+            'is_primary': False,
+            'created_at': firestore.SERVER_TIMESTAMP
+        }
+
+        # Adiciona a nova imagem na subcoleção 'images'
+        image_ref = product_ref.collection('images').add(image_data)
+
+        return jsonify({"message": "Imagem candidata adicionada com sucesso.", "imageId": image_ref[1].id}), 201
+
+    except Exception as e:
+        return jsonify({"error": f"Erro ao adicionar imagem: {e}"}), 500
+
+@app.route("/api/products/canonical", methods=["POST"])
+def create_canonical_product():
     if not db:
         return jsonify({"error": "Dependência do Firestore não inicializada."}), 503
 
@@ -160,31 +298,30 @@ def create_product():
     try:
         id_token = auth_header.split('Bearer ')[1]
         decoded_token = auth.verify_id_token(id_token)
-        uid = decoded_token['uid']
+        # Idealmente, verificar uma custom claim de admin
+        # auth.get_user(decoded_token['uid']).custom_claims.get('admin')
     except Exception as e:
         return jsonify({"error": "Invalid or expired token", "details": str(e)}), 401
 
     product_data = request.get_json()
-    if not product_data or not product_data.get('name') or not product_data.get('store_id'):
-        return jsonify({"error": "Product name and store_id are required"}), 400
-    
-    store_id = product_data['store_id']
-
-    # Nova verificação de permissão centralizada
-    allowed, reason = check_permission(uid, store_id)
-    if not allowed:
-        return jsonify({"error": "User is not authorized to add products to this store", "details": reason}), 403
+    if not product_data or not product_data.get('name'):
+        return jsonify({"error": "Product name is required"}), 400
 
     try:
         product_to_create = product_data.copy()
+        product_to_create['status'] = 'pending_approval' # Status padrão para novos produtos
         product_to_create['created_at'] = firestore.SERVER_TIMESTAMP
         product_to_create['updated_at'] = firestore.SERVER_TIMESTAMP
+        
+        # Produtos canônicos não têm store_id
+        product_to_create.pop('store_id', None)
+
         _, doc_ref = db.collection('products').add(product_to_create)
         
-        publish_event('eventos_produtos', 'ProductCreated', doc_ref.id, product_to_create)
-        return jsonify({"message": "Product created successfully", "productId": doc_ref.id}), 201
+        publish_event('eventos_produtos', 'CanonicalProductPending', doc_ref.id, product_to_create)
+        return jsonify({"message": "Canonical product created and awaiting approval", "productId": doc_ref.id}), 201
     except Exception as e:
-        return jsonify({"error": "Could not create product", "details": str(e)}), 500
+        return jsonify({"error": "Could not create canonical product", "details": str(e)}), 500
 
 @app.route('/api/products/<product_id>', methods=['GET'])
 def get_product(product_id):
