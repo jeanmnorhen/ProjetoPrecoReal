@@ -88,7 +88,9 @@ runs:
       shell: bash
       run: |
         echo "Fetching current production URL for ${{ inputs.vercel_project_name }}"
-        CURRENT_URL=$(vercel inspect ${{ inputs.vercel_project_name }} --prod --token=${{ inputs.vercel_token }} --scope=${{ inputs.vercel_org_id }} | jq -r .url)
+        # The `ls` command lists deployments. We filter by --prod, take the last line, and get the last column which is the URL.
+        # We prepend "https://" as the output doesn't include the protocol.
+        CURRENT_URL=$(vercel ls ${{ inputs.vercel_project_name }} --prod --token=${{ inputs.vercel_token }} --scope=${{ inputs.vercel_org_id }} | tail -n 1 | awk '{print "https://"$NF}')
         if [ -z "$CURRENT_URL" ] || [ "$CURRENT_URL" == "null" ]; then
           echo "Error: Could not fetch current production URL for ${{ inputs.vercel_project_name }}."
           exit 1
