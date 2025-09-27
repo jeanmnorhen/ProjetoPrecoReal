@@ -47,7 +47,6 @@ def mock_global_dependencies(mocker):
     mocker.patch('api.index.producer', mocker.MagicMock())
     mocker.patch('api.index.engine', mocker.MagicMock())
     mocker.patch('api.index.Base', mocker.MagicMock())
-    # mocker.patch('api.index.Critica', mocker.MagicMock()) # Removido
 
     # Mockar as variáveis globais de erro de inicialização para None
     mocker.patch('api.index.firebase_init_error', None)
@@ -63,8 +62,8 @@ def mock_global_dependencies(mocker):
     mocker.patch('api.index.init_db')
     mocker.patch('api.index.text', return_value=mocker.MagicMock())
     
-    # Mockar o db_session para ser um objeto válido
-    mocker.patch('api.index.db_session', mocker.MagicMock(spec=api_index.sessionmaker()))
+    # Mockar o db_session para ser um objeto válido, sem spec
+    mocker.patch('api.index.db_session', mocker.MagicMock())
 
 @pytest.fixture
 def firebase_mock_db(mocker):
@@ -82,31 +81,10 @@ def firebase_mock_db(mocker):
     return mock_db
 
 @pytest.fixture
-def postgis_mock_session(mocker):
-    mock_sql_session = mocker.MagicMock()
-    mock_location_record = MockUserLocation('test_user_123', 'POINT(-46.6 -23.5)')
-    mock_sql_session.query.return_value.filter_by.return_value.first.return_value = mock_location_record
-    # Add mock for the health check query
-    mock_sql_session.execute.return_value = MagicMock()
-    mocker.patch('api.index.db_session', mock_sql_session)
-    return mock_sql_session
-
-@pytest.fixture
 def kafka_mock_producer(mocker):
     mock_kafka_producer_instance = mocker.MagicMock()
     mocker.patch('api.index.producer', mock_kafka_producer_instance)
     return mock_kafka_producer_instance
-
-@pytest.fixture
-def to_shape_mock(mocker):
-    mock_to_shape = mocker.MagicMock(return_value=MockPoint(x=-46.6, y=-23.5))
-    mocker.patch('api.index.to_shape', mock_to_shape)
-    return mock_to_shape
-
-@pytest.fixture
-def publish_event_mock(mocker):
-    mock_publish_event = mocker.patch('api.index.publish_event')
-    return mock_publish_event
 
 @pytest.fixture
 def client():
@@ -118,8 +96,12 @@ def client():
 
 # --- Test Cases ---
 
-def test_create_user_with_location(client, firebase_mock_db, postgis_mock_session, publish_event_mock):
+def test_create_user_with_location(client, firebase_mock_db, mocker):
     """Test creating a user with location data."""
+    # Mocks specific to this test
+    postgis_mock_session = mocker.patch('api.index.db_session', mocker.MagicMock())
+    publish_event_mock = mocker.patch('api.index.publish_event')
+
     user_data = {
         "email": "new@example.com",
         "name": "New User",
@@ -130,34 +112,33 @@ def test_create_user_with_location(client, firebase_mock_db, postgis_mock_sessio
     assert response.status_code == 201
     assert "id" in response.json
     
-    # Assert that PostGIS session was used
     postgis_mock_session.add.assert_called_once()
     postgis_mock_session.commit.assert_called_once()
-
-    # Assert that Firestore was used
     firebase_mock_db.collection.return_value.document.return_value.set.assert_called_once()
-
-    # Assert that Kafka event was published
     publish_event_mock.assert_called_once()
     args, kwargs = publish_event_mock.call_args
     assert args[1] == 'UserCreated'
 
-def test_create_user_without_location(client, firebase_mock_db, postgis_mock_session):
+def test_create_user_without_location(client, firebase_mock_db, mocker):
     """Test creating a user without location data."""
+    postgis_mock_session = mocker.patch('api.index.db_session', mocker.MagicMock())
+
     user_data = {"email": "no-loc@example.com", "name": "No Location User"}
     response = client.post('/users', json=user_data)
 
     assert response.status_code == 201
     
-    # Assert that PostGIS session was NOT used to add data, but commit is still called
     postgis_mock_session.add.assert_not_called()
     postgis_mock_session.commit.assert_called_once()
-
-    # Assert that Firestore was used
     firebase_mock_db.collection.return_value.document.return_value.set.assert_called_once()
 
-def test_get_user_with_location(client, firebase_mock_db, postgis_mock_session, to_shape_mock):
+def test_get_user_with_location(client, firebase_mock_db, mocker):
     """Test getting a user who has a location in PostGIS."""
+    postgis_mock_session = mocker.patch('api.index.db_session', mocker.MagicMock())
+    mock_location_record = MockUserLocation('test_user_123', 'POINT(-46.6 -23.5)')
+    postgis_mock_session.query.return_value.filter_by.return_value.first.return_value = mock_location_record
+    to_shape_mock = mocker.patch('api.index.to_shape', return_value=MockPoint(x=-46.6, y=-23.5))
+
     response = client.get('/users/test_user_123')
 
     assert response.status_code == 200
@@ -166,23 +147,22 @@ def test_get_user_with_location(client, firebase_mock_db, postgis_mock_session, 
     assert response.json['location']['latitude'] == -23.5
     assert response.json['location']['longitude'] == -46.6
     
-    # Assert that PostGIS was queried
     postgis_mock_session.query.assert_called_once()
-    # Assert that to_shape was called to parse the location
     to_shape_mock.assert_called_once()
 
-def test_get_user_without_location(client, firebase_mock_db, postgis_mock_session, to_shape_mock):
+def test_get_user_without_location(client, firebase_mock_db, mocker):
     """Test getting a user who does not have a location in PostGIS."""
-    # Setup mock to return None for the location query
+    postgis_mock_session = mocker.patch('api.index.db_session', mocker.MagicMock())
     postgis_mock_session.query.return_value.filter_by.return_value.first.return_value = None
-    
+    to_shape_mock = mocker.patch('api.index.to_shape')
+
     response = client.get('/users/test_user_123')
 
     assert response.status_code == 200
-    assert 'location' not in response.json # The key should be absent
+    assert 'location' not in response.json
     
     postgis_mock_session.query.assert_called_once()
-    to_shape_mock.assert_not_called() # Should not be called if no record is found
+    to_shape_mock.assert_not_called()
 
 def test_get_user_not_found(client, firebase_mock_db):
     """Test getting a user that does not exist in Firestore."""
@@ -191,46 +171,48 @@ def test_get_user_not_found(client, firebase_mock_db):
     response = client.get('/users/non_existent_user')
     assert response.status_code == 404
 
-def test_update_user_location(client, firebase_mock_db, postgis_mock_session, publish_event_mock):
+def test_update_user_location(client, firebase_mock_db, mocker):
     """Test updating a user's location."""
+    postgis_mock_session = mocker.patch('api.index.db_session', mocker.MagicMock())
+    mock_location_record = MockUserLocation('test_user_123', 'POINT(-46.6 -23.5)')
+    postgis_mock_session.query.return_value.filter_by.return_value.first.return_value = mock_location_record
+    publish_event_mock = mocker.patch('api.index.publish_event')
+
     update_data = {"location": {"latitude": -10.0, "longitude": -20.0}}
     response = client.put('/users/test_user_123', json=update_data)
 
     assert response.status_code == 200
     
-    # Assert that the location record object was modified and commit was called
-    location_record = postgis_mock_session.query.return_value.filter_by.return_value.first.return_value
-    assert location_record.location == 'POINT(-20.0 -10.0)'
+    assert mock_location_record.location == 'POINT(-20.0 -10.0)'
     postgis_mock_session.commit.assert_called_once()
 
-    # Assert event was published
     publish_event_mock.assert_called_once()
     args, kwargs = publish_event_mock.call_args
     assert args[1] == 'UserUpdated'
     assert args[2] == 'test_user_123'
     assert args[3] == update_data
 
-def test_delete_user(client, firebase_mock_db, postgis_mock_session, publish_event_mock):
+def test_delete_user(client, firebase_mock_db, mocker):
     """Test deleting a user."""
+    postgis_mock_session = mocker.patch('api.index.db_session', mocker.MagicMock())
+    mock_location_record = MockUserLocation('test_user_123', 'POINT(-46.6 -23.5)')
+    postgis_mock_session.query.return_value.filter_by.return_value.first.return_value = mock_location_record
+    publish_event_mock = mocker.patch('api.index.publish_event')
+
     response = client.delete('/users/test_user_123')
 
     assert response.status_code == 204
     
-    # Assert that delete was called on the session
-    location_record = postgis_mock_session.query.return_value.filter_by.return_value.first.return_value
-    postgis_mock_session.delete.assert_called_once_with(location_record)
+    postgis_mock_session.delete.assert_called_once_with(mock_location_record)
     postgis_mock_session.commit.assert_called_once()
-
-    # Assert that delete was called on Firestore
     firebase_mock_db.collection.return_value.document.return_value.delete.assert_called_once()
-
-    # Assert event was published
     publish_event_mock.assert_called_once()
 
-def test_health_check_all_ok(client, firebase_mock_db, postgis_mock_session, kafka_mock_producer, mocker):
+def test_health_check_all_ok(client, firebase_mock_db, kafka_mock_producer, mocker):
     """Test health check when all services are up."""
-    # The get_health_status is already mocked by mock_global_dependencies to return an "ok" status
-    # We just need to ensure the endpoint returns the correct structure and status code.
+    postgis_mock_session = mocker.patch('api.index.db_session', mocker.MagicMock())
+    postgis_mock_session.execute.return_value = MagicMock()
+
     response = client.get('/health')
     assert response.status_code == 200
     assert response.json == {
@@ -239,12 +221,12 @@ def test_health_check_all_ok(client, firebase_mock_db, postgis_mock_session, kaf
         "initialization_errors": {"firestore": None, "postgresql_engine": None, "postgresql_table": None, "postgresql_query": None, "kafka_producer": None}
     }
 
-def test_health_check_pg_error(client, postgis_mock_session, mocker):
+def test_health_check_pg_error(client, mocker):
     """Test health check when PostgreSQL is down."""
-    # Simulate a DB error
-    from sqlalchemy import text
+    postgis_mock_session = mocker.patch('api.index.db_session', mocker.MagicMock())
     postgis_mock_session.execute.side_effect = Exception("Connection failed")
     
+    # We need to re-mock get_health_status to reflect the error
     mocker.patch('api.index.get_health_status', return_value={
         "environment_variables": {"FIREBASE_ADMIN_SDK_BASE64": "present", "POSTGRES_POSTGRES_URL": "present", "KAFKA_BOOTSTRAP_SERVER": "present", "KAFKA_API_KEY": "present", "KAFKA_API_SECRET": "present"},
         "dependencies": {"firestore": "ok", "kafka_producer": "ok", "postgresql_connection": "error during query: Connection failed", "table_initialization": "ok"},

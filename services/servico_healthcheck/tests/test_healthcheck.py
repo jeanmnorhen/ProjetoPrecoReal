@@ -48,8 +48,9 @@ def test_health_check_all_services_ok(client):
         for service_name in SERVICES_TO_MONITOR.keys():
             assert response.json['services'][service_name]['status'] == 'ok'
             # Check that requests.get was called for each service
-            expected_url = os.environ.get(SERVICES_TO_MONITOR[service_name]) + "/api/health"
-            assert any(expected_url == call.args[0] for call in mock_get.call_args_list)
+            health_path = "/health" if service_name == "servico_usuarios" else "/api/health"
+            expected_url = os.environ.get(SERVICES_TO_MONITOR[service_name]) + health_path
+            assert any(expected_url in call.args[0] for call in mock_get.call_args_list)
 def test_health_check_some_services_degraded(client):
     with mock.patch('services.servico_healthcheck.api.index.requests.get') as mock_get:
         # Configure mock_get to simulate some services being down
