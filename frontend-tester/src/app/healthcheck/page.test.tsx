@@ -4,6 +4,15 @@ import { render, screen, waitFor, act } from '@testing-library/react';
 import HealthcheckPage from './page';
 import '@testing-library/jest-dom';
 
+// Mock do useAuth para simular um usuário admin autenticado
+jest.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({
+    currentUser: { uid: 'test-admin-uid' }, // Simula um usuário logado
+    isAdmin: true, // Simula que o usuário é admin
+    loading: false, // Simula que a autenticação não está carregando
+  }),
+}));
+
 // Mock do process.env para simular a variável de ambiente
 const mockHealthcheckApiUrl = "http://mock-healthcheck-api.com";
 const originalEnv = process.env;
