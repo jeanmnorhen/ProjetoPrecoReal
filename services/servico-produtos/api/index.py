@@ -286,6 +286,75 @@ def add_product_image(product_id):
     except Exception as e:
         return jsonify({"error": f"Erro ao adicionar imagem: {e}"}), 500
 
+@app.route('/api/products/<product_id>/images/<image_id>/set-primary', methods=['POST'])
+def set_primary_product_image(product_id, image_id):
+    if not db:
+        return jsonify({"error": "Dependência do Firestore não inicializada."}), 503
+
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Authorization token is required"}), 401
+
+    try:
+        id_token = auth_header.split('Bearer ')[1]
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token['uid']
+    except Exception as e:
+        return jsonify({"error": "Invalid or expired token", "details": str(e)}), 401
+
+    product_ref = db.collection('products').document(product_id)
+    
+    try:
+        product_doc = product_ref.get()
+        if not product_doc.exists:
+            return jsonify({"error": "Produto não encontrado."}), 404
+        
+        store_id = product_doc.to_dict().get('store_id')
+        # Para produtos canônicos (sem store_id), apenas admins podem definir imagem principal
+        is_admin = decoded_token.get('admin', False) # Assumindo que o token pode ter uma claim 'admin'
+
+        if store_id: # Se for um produto de loja, verificar permissão do dono da loja
+            allowed, reason = check_permission(uid, store_id)
+            if not allowed:
+                return jsonify({"error": "User is not authorized to modify this product's images", "details": reason}), 403
+        elif not is_admin: # Se for canônico e não for admin
+            return jsonify({"error": "Only administrators can set primary images for canonical products."}), 403
+
+        image_to_set_primary_ref = product_ref.collection('images').document(image_id)
+        image_to_set_primary_doc = image_to_set_primary_ref.get()
+
+        if not image_to_set_primary_doc.exists:
+            return jsonify({"error": "Imagem não encontrada."}), 404
+
+        primary_image_url = image_to_set_primary_doc.to_dict().get('image_url')
+        if not primary_image_url:
+            return jsonify({"error": "URL da imagem principal não encontrada."}), 500
+
+        # Iniciar uma transação para garantir atomicidade
+        transaction = db.transaction()
+
+        @firestore.transactional
+        def update_primary_image_transaction(transaction, product_ref, image_to_set_primary_ref, primary_image_url):
+            # Desmarcar todas as outras imagens como primárias
+            images_ref = product_ref.collection('images')
+            current_primary_images = images_ref.where('is_primary', '==', True).stream(transaction=transaction)
+            for img_doc in current_primary_images:
+                transaction.update(img_doc.reference, {'is_primary': False})
+            
+            # Definir a nova imagem como primária
+            transaction.update(image_to_set_primary_ref, {'is_primary': True})
+
+            # Atualizar o campo image_url no documento principal do produto
+            transaction.update(product_ref, {'image_url': primary_image_url, 'updated_at': firestore.SERVER_TIMESTAMP})
+
+        update_primary_image_transaction(transaction, product_ref, image_to_set_primary_ref, primary_image_url)
+
+        publish_event('eventos_produtos', 'ProductImageSetPrimary', product_id, {"image_id": image_id, "image_url": primary_image_url})
+        return jsonify({"message": "Imagem definida como principal com sucesso.", "productId": product_id, "imageId": image_id}), 200
+
+    except Exception as e:
+        return jsonify({"error": f"Erro ao definir imagem principal: {e}"}), 500
+
 @app.route("/api/products/canonical", methods=["POST"])
 def create_canonical_product():
     if not db:

@@ -18,16 +18,16 @@ A nova rotina impactará três componentes principais:
 
 O alicerce. Precisamos preparar o banco de dados e a API para receber os novos dados.
 
-*   **Schema do Banco de Dados (PostgreSQL):**
-    1.  Adicionar uma coluna `status` à tabela `canonical_products` (ex: `pending_approval`, `approved`, `rejected`).
-    2.  Criar uma nova tabela `product_images` (`id`, `product_id`, `image_url`, `source`, `is_primary`, `status`). Isso permitirá associar múltiplas imagens a um produto para que o admin escolha a melhor.
+*   **Schema do Banco de Dados (Firestore):**
+    1.  Adicionar um campo `status` ao documento `products/{id}` (ex: `pending_approval`, `approved`, `rejected`).
+    2.  Criar uma subcoleção `images` em `products/{id}` com documentos contendo (`id`, `image_url`, `source`, `is_primary`, `status`). Isso permitirá associar múltiplas imagens a um produto para que o admin escolha a melhor.
 
 *   **API do `servico-produtos`:**
     1.  Criar novos endpoints para administradores:
         *   `POST /api/products/{id}/approve`: Muda o status do produto para `approved`.
         *   `POST /api/products/{id}/reject`: Muda o status do produto para `rejected`.
         *   `GET /api/products/pending`: Lista todos os produtos com status `pending_approval`.
-        *   `POST /api/images/{image_id}/set-primary`: Define uma imagem como a principal para um produto.
+        *   `POST /api/products/{id}/images/{image_id}/set-primary`: Define uma imagem como a principal para um produto.
 
 **Fase 2: Backend - Ampliação do `servico-agentes-ia`**
 

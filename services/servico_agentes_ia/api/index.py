@@ -542,6 +542,7 @@ def catalog_intake():
         return jsonify({"message": "Novo produto gerado pela IA e enviado para aprovação.", "details": creation_response.json()}), 202
 
     except Exception as e:
+        print(f"DEBUG: Exceção no catalog_intake: {e}")
         return jsonify({"error": f"Erro no processo de catalogação: {str(e)}"}), 500
 
 @app.route('/api/health', methods=['GET'])

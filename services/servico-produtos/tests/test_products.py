@@ -76,34 +76,39 @@ def mock_dependencies():
 
 # --- Test Cases ---
 
-def test_create_product_success(client, mock_dependencies):
-    """Tests successful product creation."""
-    headers = {"Authorization": "Bearer fake_token"}
+def test_create_canonical_product_success(client, mock_dependencies):
+    """Tests successful canonical product creation."""
+    headers = {"Authorization": "Bearer fake_admin_token"}
     new_product_data = {
-        "name": "Produto Teste",
-        "price": 99.99,
-        "store_id": "test_store_id",
-        "category": "Teste"
+        "name": "Produto Canônico Teste",
+        "category": "Teste",
+        "description": "Descrição do produto canônico."
     }
 
-    response = client.post("/api/products", headers=headers, json=new_product_data)
+    response = client.post("/api/products/canonical", headers=headers, json=new_product_data)
 
     assert response.status_code == 201
     assert response.json["productId"] == "new_product_id_456"
-    mock_dependencies["check_permission"].assert_called_once_with('test_user_uid', 'test_store_id')
     mock_dependencies["db"].collection('products').add.assert_called_once()
-    mock_dependencies["publish_event"].assert_called_once()
+    mock_dependencies["publish_event"].assert_called_once_with('eventos_produtos', 'CanonicalProductPending', 'new_product_id_456', {
+        'name': 'Produto Canônico Teste',
+        'category': 'Teste',
+        'description': 'Descrição do produto canônico.',
+        'status': 'pending_approval',
+        'created_at': api_index.firestore.SERVER_TIMESTAMP,
+        'updated_at': api_index.firestore.SERVER_TIMESTAMP
+    })
 
-def test_create_product_unauthorized(client, mock_dependencies):
-    """Tests product creation when user is not authorized."""
-    mock_dependencies["check_permission"].return_value = (False, "not owner")
-    headers = {"Authorization": "Bearer fake_token"}
-    new_product_data = {"name": "Produto Teste", "store_id": "test_store_id"}
+def test_create_canonical_product_unauthorized(client, mock_dependencies):
+    """Tests canonical product creation with invalid/missing token."""
+    mock_dependencies["auth"].verify_id_token.side_effect = Exception("Invalid token")
+    headers = {"Authorization": "Bearer invalid_token"}
+    new_product_data = {"name": "Produto Canônico Teste"}
 
-    response = client.post("/api/products", headers=headers, json=new_product_data)
+    response = client.post("/api/products/canonical", headers=headers, json=new_product_data)
 
-    assert response.status_code == 403
-    assert "not authorized" in response.json["error"]
+    assert response.status_code == 401
+    assert "Invalid or expired token" in response.json["error"]
 
 def test_get_product_success(client, mock_dependencies):
     """Tests retrieving an existing product."""
