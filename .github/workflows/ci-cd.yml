@@ -172,6 +172,16 @@ jobs:
             "servico-produtos"
             "servico-healthcheck"
           )
+          PATHS=(
+            "services/servico-usuarios"
+            "services/servico-busca"
+            "services/servico-monitoramento"
+            "services/servico_agentes_ia"
+            "services/servico_lojas"
+            "services/servico_ofertas"
+            "services/servico-produtos"
+            "services/servico_healthcheck"
+          )
           ENV_VARS=(
             "SERVICO_USUARIOS_URL"
             "SERVICO_BUSCA_URL"
@@ -193,8 +203,14 @@ jobs:
             "${{ steps.deploy_servico_healthcheck.outputs.url }}"
           )
 
-          for TARGET_PROJECT in "${PROJECTS[@]}"; do
-            echo "--- Updating environment for project: $TARGET_PROJECT ---"
+          for j in ${!PROJECTS[@]}; do
+            TARGET_PROJECT=${PROJECTS[$j]}
+            TARGET_PATH=${PATHS[$j]}
+
+            echo "--- Updating environment for project: $TARGET_PROJECT in path $TARGET_PATH ---"
+            cd $TARGET_PATH
+            vercel link --project $TARGET_PROJECT --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} --yes
+
             for i in ${!URLS[@]}; do
               VAR_NAME=${ENV_VARS[$i]}
               VAR_VALUE=${URLS[$i]}
@@ -205,10 +221,10 @@ jobs:
               fi
 
               echo "Setting $VAR_NAME for $TARGET_PROJECT"
-              # Remove and re-add to ensure the value is updated
-              vercel env rm $VAR_NAME $TARGET_PROJECT --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} 2>/dev/null || true
-              vercel env add $VAR_NAME "$VAR_VALUE" $TARGET_PROJECT --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }}
+              vercel env rm $VAR_NAME --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} --yes 2>/dev/null || true
+              vercel env add $VAR_NAME "$VAR_VALUE" --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} --yes
             done
+            cd - # Return to previous directory (root)
           done
 
 
