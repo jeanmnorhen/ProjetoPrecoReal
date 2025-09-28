@@ -17,6 +17,9 @@ outputs:
   url:
     description: 'The URL of the deployed microservice (if deployed)'
     value: ${{ steps.deploy.outputs.url || steps.get_current_url.outputs.url }}
+  should_deploy:
+    description: 'Whether the microservice was deployed (true) or not (false)'
+    value: ${{ steps.check_changes.outputs.should_deploy }}
 runs:
   using: 'composite'
   steps:

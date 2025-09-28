@@ -156,7 +156,7 @@ jobs:
         with:
           service_path: services/servico_healthcheck
           vercel_project_name: servico-healthcheck
-          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }} 
+          vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
       - name: Make update script executable
