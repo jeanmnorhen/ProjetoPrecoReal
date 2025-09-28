@@ -92,8 +92,12 @@ Gerenciamento de Críticas de Produtos:
 Fila de Revisão: Uma interface exibe todos os produtos que receberam críticas dos usuários (ex: foto errada, descrição incorreta).
 Ação de Correção: Para cada item na fila, o administrador pode visualizar a crítica, comparar com os dados atuais e corrigir a informação diretamente no produto canônico. A alteração é propagada para todas as ofertas vinculadas.
 
-Gestão de Produtos Cadastrados (Canônicos):
-O objetivo é ter um catálogo de produtos rico e preciso para que o lojista apenas precifique suas ofertas, sem precisar cadastrar detalhes.
-O administrador pode buscar, filtrar, editar, e criar novos produtos canônicos.
-O formulário de produto canônico inclui nome, descrição detalhada, categoria, código de barras e uma foto de alta qualidade.
-O sistema também pode ter sugestões de novos produtos canônicos baseados em buscas de usuários que não retornaram resultados.
+Gestão de Produtos Canônicos com IA:
+O objetivo é ter um catálogo de produtos rico e preciso para que o lojista apenas precifique suas ofertas. O processo manual foi substituído por um fluxo assistido por Inteligência Artificial.
+1.  Alimentador de Catálogo: O administrador utiliza uma interface de "Alimentador" para iniciar o processo. Ele pode fornecer:
+    -   Um nome de produto (ex: "Leite Ninho 500g").
+    -   Uma categoria para ser expandida (ex: "Chocolates"), onde a IA irá sugerir produtos populares.
+    -   Uma imagem de um produto.
+2.  Processamento com IA: O `servico-agentes-ia` processa a entrada. Se um produto similar já existe, ele pode ser enriquecido (ex: com uma nova imagem). Se o produto é novo, a IA gera seus detalhes (nome, descrição, categorias).
+3.  Fila de Aprovação: Os novos produtos gerados pela IA são criados com status "pendente" e aparecem na "Fila de Aprovação" do administrador.
+4.  Revisão e Moderação: O administrador revisa os produtos pendentes, podendo editar qualquer dado gerado pela IA antes de "Aprovar" ou "Rejeitar" a inclusão do produto no catálogo canônico.
