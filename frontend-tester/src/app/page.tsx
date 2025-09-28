@@ -1,4 +1,4 @@
-//1 frontend-tester/src/app/page.tsx
+// frontend-tester/src/app/page.tsx
 import AuthForm from "../components/AuthForm";
 
 export default function Home() {
