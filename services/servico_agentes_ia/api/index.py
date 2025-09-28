@@ -1,3 +1,4 @@
+import requests
 from dotenv import load_dotenv
 load_dotenv(dotenv_path='.env.local')
 
@@ -473,10 +474,10 @@ def catalog_intake():
             else:
                 return jsonify({"error": "Não foi possível identificar o produto na imagem para busca."}), 400
 
-        if search_results and search_results.get('hits', 0) > 0:
+        if search_results and search_results.get('results') and len(search_results.get('results')) > 0:
             # Lógica para produto encontrado
-            product_id = search_results['products'][0]['id'] # Assume o primeiro resultado como o mais relevante
-            product_name = search_results['products'][0]['name']
+            product_id = search_results['results'][0]['id'] # Assume o primeiro resultado como o mais relevante
+            product_name = search_results['results'][0]['name']
 
             if image_base64:
                 # Upload da nova imagem e adição como candidata

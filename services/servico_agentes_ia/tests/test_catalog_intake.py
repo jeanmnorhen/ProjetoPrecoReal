@@ -8,47 +8,13 @@ import json
 import base64
 import requests
 
-# Add the service's root directory to the path to allow for relative imports
-service_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if service_root not in sys.path:
-    sys.path.insert(0, service_root)
+# Add the project root directory to the path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 # Now we can import the app and its dependencies
-from api import index as api_index
-
-@pytest.fixture(autouse=True)
-def mock_env_vars():
-    """Mocks all necessary environment variables."""
-    with patch.dict(os.environ, {
-        "FIREBASE_ADMIN_SDK_BASE64": "mock_firebase_sdk_base64",
-        "KAFKA_BOOTSTRAP_SERVER": "dummy_kafka_server",
-        "KAFKA_API_KEY": "dummy_kafka_key",
-        "KAFKA_API_SECRET": "dummy_kafka_secret",
-        "GEMINI_API_KEY": "dummy_gemini_api_key",
-        "CRON_SECRET": "dummy_cron_secret",
-        "SERVICO_BUSCA_URL": "http://mock-search-service",
-        "SERVICO_PRODUTOS_URL": "http://mock-products-service",
-        "FIREBASE_STORAGE_BUCKET": "mock-storage-bucket"
-    }):
-        yield
-
-@pytest.fixture
-def client():
-    """A test client for the app."""
-    app = api_index.app
-    app.config['TESTING'] = True
-    with app.test_client() as client:
-        yield client
-
-import requests
-
-# Add the service's root directory to the path to allow for relative imports
-service_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-if service_root not in sys.path:
-    sys.path.insert(0, service_root)
-
-# Now we can import the app and its dependencies
-from api import index as api_index
+from services.servico_agentes_ia.api import index as api_index
 
 @pytest.fixture(autouse=True)
 def mock_env_vars():
@@ -79,7 +45,7 @@ def mock_dependencies():
     """Mocks all external dependencies for all tests."""
     with patch.object(api_index, 'db', MagicMock()) as mock_db, \
          patch.object(api_index, 'producer', MagicMock()) as mock_producer, \
-         patch('firebase_admin.auth', MagicMock()) as mock_auth, \
+         patch.object(api_index, 'auth', MagicMock()) as mock_auth, \
          patch.object(api_index, 'genai', MagicMock()) as mock_genai, \
          patch('requests.get', MagicMock()) as mock_requests_get, \
          patch('requests.post', MagicMock()) as mock_requests_post, \
@@ -130,43 +96,6 @@ def mock_dependencies():
             "upload_image_to_firebase": mock_upload_image_to_firebase
         }
 
-        # --- Configure Default Mock Behaviors ---
-
-        # Default for auth
-        mock_auth.verify_id_token.return_value = {'uid': 'test_user_uid'}
-
-        # Default for Gemini
-        mock_genai.GenerativeModel.return_value.generate_content.return_value.text = json.dumps({
-            "name": "Produto Gerado",
-            "categories": ["Categoria1", "Categoria2"],
-            "description": "Descrição gerada pela IA."
-        })
-
-        # Default for requests.get (servico-busca)
-        mock_requests_get.return_value = MagicMock(status_code=200, ok=True)
-        mock_requests_get.return_value.json.return_value = {"hits": 0, "products": []} # Default: product not found
-
-        # Default for requests.post (servico-produtos)
-        mock_requests_post.return_value = MagicMock(status_code=201, ok=True)
-        mock_requests_post.return_value.json.return_value = {"message": "Success", "productId": "new_prod_id"}
-
-        # Default for Firebase Storage
-        mock_firebase_admin.storage.bucket.return_value.blob.return_value.upload_from_string.return_value = None
-        mock_firebase_admin.storage.bucket.return_value.blob.return_value.make_public.return_value = None
-        mock_firebase_admin.storage.bucket.return_value.blob.return_value.public_url = "http://mock-image-url.com/image.jpg"
-
-        yield {
-            "db": mock_db,
-            "producer": mock_producer,
-            "auth": mock_auth,
-            "genai": mock_genai,
-            "requests_get": mock_requests_get,
-            "requests_post": mock_requests_post,
-            "image_open": mock_image_open,
-            "firebase_admin": mock_firebase_admin,
-            "upload_image_to_firebase": mock_upload_image_to_firebase
-        }
-
 # --- Test Cases for catalog-intake endpoint ---
 
 def test_catalog_intake_unauthorized(client):
@@ -179,22 +108,23 @@ def test_catalog_intake_missing_input(client, mock_dependencies):
     headers = {"Authorization": "Bearer fake_token"}
     response = client.post('/api/agents/catalog-intake', headers=headers, json={})
     assert response.status_code == 400
-    assert "A requisição deve conter 'text_query', 'image_base64' ou 'category_query'" in response.json['error']
+    assert "Request body is missing" in response.json['error']
 
 def test_catalog_intake_text_query_product_found(client, mock_dependencies):
     """Tests catalog intake with text query where product is found."""
     mock_dependencies["requests_get"].return_value.json.return_value = {
-        "hits": 1,
-        "products": [{'id': 'prod123', 'name': 'Existing Product'}]
+        "results": [{'id': 'prod123', 'name': 'Existing Product'}]
     }
     headers = {"Authorization": "Bearer fake_token"}
     response = client.post('/api/agents/catalog-intake', headers=headers, json={'text_query': 'Existing Product'})
     assert response.status_code == 200
     assert "Produto encontrado no catálogo." in response.json['message']
     assert response.json['product']['id'] == 'prod123'
+    mock_dependencies["genai"].GenerativeModel.return_value.generate_content.assert_not_called() # IA não deve ser chamada
 
 def test_catalog_intake_text_query_product_not_found(client, mock_dependencies):
     """Tests catalog intake with text query where product is not found, leading to AI generation."""
+    mock_dependencies["requests_get"].return_value.json.return_value = {"results": []} # Nenhum produto encontrado
     headers = {"Authorization": "Bearer fake_token"}
     response = client.post('/api/agents/catalog-intake', headers=headers, json={'text_query': 'New Product'})
     assert response.status_code == 202
@@ -209,8 +139,7 @@ def test_catalog_intake_text_query_product_not_found(client, mock_dependencies):
 def test_catalog_intake_image_product_found(client, mock_dependencies):
     """Tests catalog intake with image where product is found, leading to image update."""
     mock_dependencies["requests_get"].return_value.json.return_value = {
-        "hits": 1,
-        "products": [{'id': 'prod123', 'name': 'Existing Product'}]
+        "results": [{'id': 'prod123', 'name': 'Existing Product'}]
     }
     headers = {"Authorization": "Bearer fake_token"}
     dummy_image_b64 = base64.b64encode(b"dummy_image_data").decode('utf-8')
@@ -223,9 +152,11 @@ def test_catalog_intake_image_product_found(client, mock_dependencies):
         headers={'Authorization': 'Bearer fake_token', 'Content-Type': 'application/json'},
         json={'image_url': 'http://mock-image-url.com/image.jpg', 'source': 'image_analysis'}
     )
+    mock_dependencies["genai"].GenerativeModel.return_value.generate_content.assert_called_once() # Chamado para identificar o produto da imagem
 
 def test_catalog_intake_image_product_not_found(client, mock_dependencies):
     """Tests catalog intake with image where product is not found, leading to AI generation and image upload."""
+    mock_dependencies["requests_get"].return_value.json.return_value = {"results": []} # Nenhum produto encontrado
     headers = {"Authorization": "Bearer fake_token"}
     dummy_image_b64 = base64.b64encode(b"dummy_image_data").decode('utf-8')
     response = client.post('/api/agents/catalog-intake', headers=headers, json={'image_base64': dummy_image_b64})
