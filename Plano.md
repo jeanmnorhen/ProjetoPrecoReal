@@ -17,8 +17,8 @@ O PREÇO REAL é uma plataforma multicomponente projetada para ser a principal f
 
 ## 3. Frontends
 
-- **frontend-tester (Web - Next.js):** Atualmente serve como uma ferramenta de teste e prototipagem. Será evoluído para o Dashboard Administrativo.
-- **Aplicativo Móvel (React Native):** O principal ponto de interação para consumidores, lojistas e funcionários.
+- **Dashboard Administrativo (Web - Next.js):** Plataforma completa para administração, monitoramento, gerenciamento de catálogo com IA e moderação de dados.
+- **Aplicativo Móvel (React Native):** O principal ponto de interação para consumidores e lojistas. **(Não iniciado)**
 
 ## 4. Dashboard Administrativo e Catálogo de Produtos
 
@@ -26,12 +26,12 @@ O PREÇO REAL é uma plataforma multicomponente projetada para ser a principal f
 - **Funcionalidades Chave:**
     - Monitoramento de métricas de uso e de preços.
     - Sistema de moderação para críticas de dados de produtos enviadas por usuários.
-    - Gerenciamento centralizado do catálogo de produtos canônicos.
+    - Gerenciamento centralizado do catálogo de produtos canônicos, assistido por IA.
 - **Objetivo Estratégico:** Aumentar a qualidade e a precisão dos dados dos produtos na plataforma, criando um catálogo rico que simplifica a experiência do lojista, permitindo que ele se concentre na precificação em vez do cadastro manual de informações.
 
-## 5. Próximos Passos e Foco Atual
+## 5. Próximos Passos e Foco Atual (Atualizado em Setembro/2025)
 
-1.  **Finalizar a Configuração do Ambiente Local:** Garantir que todos os serviços e dependências (Kafka, Postgres, Elasticsearch, etc.) estejam rodando de forma estável com Docker Compose.
-2.  **Desenvolver o Dashboard Administrativo:** Implementar as funcionalidades de monitoramento, gestão de críticas e gerenciamento do catálogo de produtos no `frontend-tester`.
-3.  **Desenvolver o Aplicativo Móvel (React Native):** Iniciar o desenvolvimento do aplicativo móvel, seguindo o plano de fases, com foco inicial na autenticação e nas funcionalidades do consumidor.
-4.  **Segurança e Escalabilidade:** Continuar a revisar e aprimorar a segurança entre os serviços e planejar a infraestrutura para escalabilidade na nuvem (Vercel/GCP).
+1.  **[FOCO PRINCIPAL] Desenvolver o Aplicativo Móvel (React Native):** Iniciar a implementação das fases descritas no `PlanoFrontEnd_Mobile.md`, começando pela estrutura de autenticação e navegação.
+2.  **Ampliar Cobertura de Testes do Frontend:** Criar testes de componentes para o Dashboard Administrativo, garantindo a estabilidade das funcionalidades existentes.
+3.  **Segurança e Escalabilidade:** Continuar a revisar e aprimorar a segurança entre os serviços e otimizar a infraestrutura para escalabilidade na nuvem (Vercel/GCP).
+4.  **[CONCLUÍDO] Desenvolver o Dashboard Administrativo:** As funcionalidades de monitoramento, gestão de críticas e o novo fluxo de gerenciamento do catálogo com IA foram implementadas.
