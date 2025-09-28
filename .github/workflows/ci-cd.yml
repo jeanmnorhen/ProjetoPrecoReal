@@ -159,73 +159,40 @@ jobs:
           vercel_org_id: ${{ secrets.VERCEL_ORG_ID }} 
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
 
-      - name: Update Environment Variables for All Services
-        shell: bash
-        run: |
-          PROJECTS=(
-            "servico-usuarios"
-            "servico-busca"
-            "servico-monitoramento"
-            "servicoagentes"
-            "servicolojas"
-            "servicoofertas"
-            "servico-produtos"
-            "servico-healthcheck"
-          )
-          PATHS=(
-            "services/servico-usuarios"
-            "services/servico-busca"
-            "services/servico-monitoramento"
-            "services/servico_agentes_ia"
-            "services/servico_lojas"
-            "services/servico_ofertas"
-            "services/servico-produtos"
-            "services/servico_healthcheck"
-          )
-          ENV_VARS=(
-            "SERVICO_USUARIOS_URL"
-            "SERVICO_BUSCA_URL"
-            "SERVICO_MONITORAMENTO_URL"
-            "SERVICO_AGENTES_IA_URL"
-            "SERVICO_LOJAS_URL"
-            "SERVICO_OFERTAS_URL"
-            "SERVICO_PRODUTOS_URL"
-            "SERVICO_HEALTHCHECK_URL"
-          )
-          URLS=(
-            "${{ steps.deploy_servico_usuarios.outputs.url }}"
-            "${{ steps.deploy_servico_busca.outputs.url }}"
-            "${{ steps.deploy_servico_monitoramento.outputs.url }}"
-            "${{ steps.deploy_servico_agentes_ia.outputs.url }}"
-            "${{ steps.deploy_servico_lojas.outputs.url }}"
-            "${{ steps.deploy_servico_ofertas.outputs.url }}"
-            "${{ steps.deploy_servico_produtos.outputs.url }}"
-            "${{ steps.deploy_servico_healthcheck.outputs.url }}"
-          )
+      - name: Make update script executable
+        run: chmod +x .github/scripts/update-env-vars.sh
 
-          for j in ${!PROJECTS[@]}; do
-            TARGET_PROJECT=${PROJECTS[$j]}
-            TARGET_PATH=${PATHS[$j]}
+      - name: Update consumers of servico-usuarios
+        if: steps.deploy_servico_usuarios.outputs.should_deploy == 'true'
+        run: ./.github/scripts/update-env-vars.sh SERVICO_USUARIOS_URL ${{ steps.deploy_servico_usuarios.outputs.url }} ${{ secrets.VERCEL_ORG_ID }} ${{ secrets.VERCEL_TOKEN }}
 
-            echo "--- Updating environment for project: $TARGET_PROJECT in path $TARGET_PATH ---"
-            cd $TARGET_PATH
-            vercel link --project $TARGET_PROJECT --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} --yes
+      - name: Update consumers of servico-busca
+        if: steps.deploy_servico_busca.outputs.should_deploy == 'true'
+        run: ./.github/scripts/update-env-vars.sh SERVICO_BUSCA_URL ${{ steps.deploy_servico_busca.outputs.url }} ${{ secrets.VERCEL_ORG_ID }} ${{ secrets.VERCEL_TOKEN }}
 
-            for i in ${!URLS[@]}; do
-              VAR_NAME=${ENV_VARS[$i]}
-              VAR_VALUE=${URLS[$i]}
+      - name: Update consumers of servico-monitoramento
+        if: steps.deploy_servico_monitoramento.outputs.should_deploy == 'true'
+        run: ./.github/scripts/update-env-vars.sh SERVICO_MONITORAMENTO_URL ${{ steps.deploy_servico_monitoramento.outputs.url }} ${{ secrets.VERCEL_ORG_ID }} ${{ secrets.VERCEL_TOKEN }}
 
-              if [[ -z "$VAR_VALUE" ]]; then
-                echo "Warning: URL for $VAR_NAME is empty. Skipping."
-                continue
-              fi
+      - name: Update consumers of servico-agentes-ia
+        if: steps.deploy_servico_agentes_ia.outputs.should_deploy == 'true'
+        run: ./.github/scripts/update-env-vars.sh SERVICO_AGENTES_IA_URL ${{ steps.deploy_servico_agentes_ia.outputs.url }} ${{ secrets.VERCEL_ORG_ID }} ${{ secrets.VERCEL_TOKEN }}
 
-              echo "Setting $VAR_NAME for $TARGET_PROJECT"
-              yes | vercel env rm $VAR_NAME production --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} 2>/dev/null || true
-              echo "$VAR_VALUE" | vercel env add $VAR_NAME production --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }}
-            done
-            cd - # Return to previous directory (root)
-          done
+      - name: Update consumers of servico-lojas
+        if: steps.deploy_servico_lojas.outputs.should_deploy == 'true'
+        run: ./.github/scripts/update-env-vars.sh SERVICO_LOJAS_URL ${{ steps.deploy_servico_lojas.outputs.url }} ${{ secrets.VERCEL_ORG_ID }} ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Update consumers of servico-ofertas
+        if: steps.deploy_servico_ofertas.outputs.should_deploy == 'true'
+        run: ./.github/scripts/update-env-vars.sh SERVICO_OFERTAS_URL ${{ steps.deploy_servico_ofertas.outputs.url }} ${{ secrets.VERCEL_ORG_ID }} ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Update consumers of servico-produtos
+        if: steps.deploy_servico_produtos.outputs.should_deploy == 'true'
+        run: ./.github/scripts/update-env-vars.sh SERVICO_PRODUTOS_URL ${{ steps.deploy_servico_produtos.outputs.url }} ${{ secrets.VERCEL_ORG_ID }} ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Update consumers of servico-healthcheck
+        if: steps.deploy_servico_healthcheck.outputs.should_deploy == 'true'
+        run: ./.github/scripts/update-env-vars.sh SERVICO_HEALTHCHECK_URL ${{ steps.deploy_servico_healthcheck.outputs.url }} ${{ secrets.VERCEL_ORG_ID }} ${{ secrets.VERCEL_TOKEN }}
 
 
   update-frontend-and-deploy:
