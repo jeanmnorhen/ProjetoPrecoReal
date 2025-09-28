@@ -199,7 +199,7 @@ jobs:
         run: |
           echo "--- Updating environment for project: frontend-tester ---"
           cd frontend-tester
-          vercel link --project frontend-tester --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} --yes
+          vercel link --project frontend-tester --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}" --yes
 
           ENV_VARS=(
             "NEXT_PUBLIC_USERS_API_URL"
@@ -232,8 +232,8 @@ jobs:
             fi
 
             echo "Setting $VAR_NAME for frontend-tester"
-            yes | vercel env rm $VAR_NAME production --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} 2>/dev/null || true
-            echo "$VAR_VALUE" | vercel env add $VAR_NAME production --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }}
+            yes | vercel env rm "$VAR_NAME" production --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}" 2>/dev/null || true
+            echo "$VAR_VALUE" | vercel env add "$VAR_NAME" production --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}"
           done
           cd -
 
@@ -291,5 +291,5 @@ jobs:
           NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
 
       - name: Deploy Frontend to Vercel
-        run: vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --scope ${{ secrets.VERCEL_ORG_ID }} --confirm --build-env NEXT_PUBLIC_USERS_API_URL=${{ steps.deploy_servico_usuarios.outputs.url }} --build-env NEXT_PUBLIC_SEARCH_API_URL=${{ steps.deploy_servico_busca.outputs.url }} --build-env NEXT_PUBLIC_MONITORING_API_URL=${{ steps.deploy_servico_monitoramento.outputs.url }} --build-env NEXT_PUBLIC_AI_API_URL=${{ steps.deploy_servico_agentes_ia.outputs.url }} --build-env NEXT_PUBLIC_STORES_API_URL=${{ steps.deploy_servico_lojas.outputs.url }} --build-env NEXT_PUBLIC_OFFERS_API_URL=${{ steps.deploy_servico_ofertas.outputs.url }} --build-env NEXT_PUBLIC_PRODUCTS_API_URL=${{ steps.deploy_servico_produtos.outputs.url }} --build-env NEXT_PUBLIC_HEALTHCHECK_API_URL=${{ steps.deploy_servico_healthcheck.outputs.url }}
+        run: vercel deploy --prod --token "${{ secrets.VERCEL_TOKEN }}" --scope "${{ secrets.VERCEL_ORG_ID }}" --confirm --build-env NEXT_PUBLIC_USERS_API_URL="${{ steps.deploy_servico_usuarios.outputs.url }}" --build-env NEXT_PUBLIC_SEARCH_API_URL="${{ steps.deploy_servico_busca.outputs.url }}" --build-env NEXT_PUBLIC_MONITORING_API_URL="${{ steps.deploy_servico_monitoramento.outputs.url }}" --build-env NEXT_PUBLIC_AI_API_URL="${{ steps.deploy_servico_agentes_ia.outputs.url }}" --build-env NEXT_PUBLIC_STORES_API_URL="${{ steps.deploy_servico_lojas.outputs.url }}" --build-env NEXT_PUBLIC_OFFERS_API_URL="${{ steps.deploy_servico_ofertas.outputs.url }}" --build-env NEXT_PUBLIC_PRODUCTS_API_URL="${{ steps.deploy_servico_produtos.outputs.url }}" --build-env NEXT_PUBLIC_HEALTHCHECK_API_URL="${{ steps.deploy_servico_healthcheck.outputs.url }}"
         working-directory: frontend-tester
