@@ -499,7 +499,7 @@ def catalog_intake():
 
                 return jsonify({"message": "Produto existente encontrado. Nova imagem adicionada para revisão.", "productId": product_id, "imageUrl": uploaded_image_url}), 200
             else:
-                return jsonify({"message": "Produto encontrado no catálogo.", "product": search_results['products'][0]}), 200
+                return jsonify({"message": "Produto encontrado no catálogo.", "product": search_results['results'][0]}), 200
 
         # Passo 2: Se não encontrado, gerar com IA
         model = get_gemini_model()

@@ -46,7 +46,7 @@ def mock_dependencies():
     with patch.object(api_index, 'db', MagicMock()) as mock_db, \
          patch.object(api_index, 'producer', MagicMock()) as mock_producer, \
          patch.object(api_index, 'auth', MagicMock()) as mock_auth, \
-         patch.object(api_index, 'genai', MagicMock()) as mock_genai, \
+         patch('services.servico_agentes_ia.api.index.get_gemini_model', MagicMock()) as mock_get_gemini_model, \
          patch('requests.get', MagicMock()) as mock_requests_get, \
          patch('requests.post', MagicMock()) as mock_requests_post, \
          patch('PIL.Image.open', MagicMock()) as mock_image_open, \
@@ -60,16 +60,15 @@ def mock_dependencies():
          }):
 
         # --- Configure Default Mock Behaviors ---
-
-        # Default for auth
-        mock_auth.verify_id_token.return_value = {'uid': 'test_user_uid'}
-
-        # Default for Gemini
-        mock_genai.GenerativeModel.return_value.generate_content.return_value.text = json.dumps({
+        gemini_model_mock = mock_get_gemini_model.return_value
+        gemini_model_mock.generate_content.return_value.text = json.dumps({
             "name": "Produto Gerado",
             "categories": ["Categoria1", "Categoria2"],
             "description": "Descrição gerada pela IA."
         })
+
+        # Default for auth
+        mock_auth.verify_id_token.return_value = {'uid': 'test_user_uid'}
 
         # Default for requests.get (servico-busca)
         mock_requests_get.return_value = MagicMock(status_code=200, ok=True)
@@ -88,7 +87,7 @@ def mock_dependencies():
             "db": mock_db,
             "producer": mock_producer,
             "auth": mock_auth,
-            "genai": mock_genai,
+            "gemini_model_mock": gemini_model_mock,
             "requests_get": mock_requests_get,
             "requests_post": mock_requests_post,
             "image_open": mock_image_open,
@@ -120,7 +119,7 @@ def test_catalog_intake_text_query_product_found(client, mock_dependencies):
     assert response.status_code == 200
     assert "Produto encontrado no catálogo." in response.json['message']
     assert response.json['product']['id'] == 'prod123'
-    mock_dependencies["genai"].GenerativeModel.return_value.generate_content.assert_not_called() # IA não deve ser chamada
+    mock_dependencies["gemini_model_mock"].generate_content.assert_not_called() # IA não deve ser chamada
 
 def test_catalog_intake_text_query_product_not_found(client, mock_dependencies):
     """Tests catalog intake with text query where product is not found, leading to AI generation."""
@@ -129,7 +128,7 @@ def test_catalog_intake_text_query_product_not_found(client, mock_dependencies):
     response = client.post('/api/agents/catalog-intake', headers=headers, json={'text_query': 'New Product'})
     assert response.status_code == 202
     assert "Novo produto gerado pela IA e enviado para aprovação." in response.json['message']
-    mock_dependencies["genai"].GenerativeModel.return_value.generate_content.assert_called_once()
+    mock_dependencies["gemini_model_mock"].generate_content.assert_called_once()
     mock_dependencies["requests_post"].assert_called_once_with(
         "http://mock-products-service/api/products/canonical",
         headers={'Authorization': 'Bearer fake_token', 'Content-Type': 'application/json'},
@@ -141,44 +140,70 @@ def test_catalog_intake_image_product_found(client, mock_dependencies):
     mock_dependencies["requests_get"].return_value.json.return_value = {
         "results": [{'id': 'prod123', 'name': 'Existing Product'}]
     }
-    headers = {"Authorization": "Bearer fake_token"}
-    dummy_image_b64 = base64.b64encode(b"dummy_image_data").decode('utf-8')
-    response = client.post('/api/agents/catalog-intake', headers=headers, json={'image_base64': dummy_image_b64})
-    assert response.status_code == 200
-    assert "Nova imagem adicionada para revisão." in response.json['message']
-    mock_dependencies["upload_image_to_firebase"].assert_called_once()
-    mock_dependencies["requests_post"].assert_called_once_with(
-        "http://mock-products-service/api/products/prod123/images",
-        headers={'Authorization': 'Bearer fake_token', 'Content-Type': 'application/json'},
-        json={'image_url': 'http://mock-image-url.com/image.jpg', 'source': 'image_analysis'}
-    )
-    mock_dependencies["genai"].GenerativeModel.return_value.generate_content.assert_called_once() # Chamado para identificar o produto da imagem
+    
+    # Specific mock for the identification call
+    with patch.object(mock_dependencies["gemini_model_mock"].generate_content.return_value, 'text', 'Existing Product'):
+        headers = {"Authorization": "Bearer fake_token"}
+        dummy_image_b64 = base64.b64encode(b"dummy_image_data").decode('utf-8')
+        response = client.post('/api/agents/catalog-intake', headers=headers, json={'image_base64': dummy_image_b64})
+    
+        assert response.status_code == 200
+        assert "Nova imagem adicionada para revisão." in response.json['message']
+        mock_dependencies["upload_image_to_firebase"].assert_called_once()
+        mock_dependencies["requests_post"].assert_called_once_with(
+            "http://mock-products-service/api/products/prod123/images",
+            headers={'Authorization': 'Bearer fake_token', 'Content-Type': 'application/json'},
+            json={'image_url': 'http://mock-image-url.com/image.jpg', 'source': 'image_analysis'}
+        )
+        mock_dependencies["gemini_model_mock"].generate_content.assert_called_once() # Chamado para identificar o produto da imagem
 
 def test_catalog_intake_image_product_not_found(client, mock_dependencies):
     """Tests catalog intake with image where product is not found, leading to AI generation and image upload."""
     mock_dependencies["requests_get"].return_value.json.return_value = {"results": []} # Nenhum produto encontrado
-    headers = {"Authorization": "Bearer fake_token"}
-    dummy_image_b64 = base64.b64encode(b"dummy_image_data").decode('utf-8')
-    response = client.post('/api/agents/catalog-intake', headers=headers, json={'image_base64': dummy_image_b64})
-    assert response.status_code == 202
-    assert "Novo produto gerado pela IA e enviado para aprovação." in response.json['message']
-    mock_dependencies["upload_image_to_firebase"].assert_called_once()
-    mock_dependencies["genai"].GenerativeModel.return_value.generate_content.assert_called_once()
-    mock_dependencies["requests_post"].assert_called_once_with(
-        "http://mock-products-service/api/products/canonical",
-        headers={'Authorization': 'Bearer fake_token', 'Content-Type': 'application/json'},
-        json={'name': 'Produto Gerado', 'description': 'Descrição gerada pela IA.', 'category': 'Categoria1,Categoria2', 'image_url': 'http://mock-image-url.com/image.jpg'}
-    )
+
+    # Mock a sequence of return values for the two AI calls
+    mock_identification_response = MagicMock()
+    mock_identification_response.text = 'New Product From Image'
+
+    mock_generation_response = MagicMock()
+    mock_generation_response.text = json.dumps({
+        "name": "New Product From Image",
+        "categories": ["Category A", "Category B"],
+        "description": "A detailed description."
+    })
+
+    with patch.object(mock_dependencies["gemini_model_mock"], 'generate_content', side_effect=[mock_identification_response, mock_generation_response]):
+        headers = {"Authorization": "Bearer fake_token"}
+        dummy_image_b64 = base64.b64encode(b"dummy_image_data").decode('utf-8')
+        response = client.post('/api/agents/catalog-intake', headers=headers, json={'image_base64': dummy_image_b64})
+    
+        assert response.status_code == 202
+        assert "Novo produto gerado pela IA e enviado para aprovação." in response.json['message']
+        mock_dependencies["upload_image_to_firebase"].assert_called_once()
+    
+        # Check that generate_content was called twice
+        assert mock_dependencies["gemini_model_mock"].generate_content.call_count == 2
+        
+        # Check that the final product creation call was made with the correct data
+        mock_dependencies["requests_post"].assert_called_once_with(
+            "http://mock-products-service/api/products/canonical",
+            headers={'Authorization': 'Bearer fake_token', 'Content-Type': 'application/json'},
+            json={'name': 'New Product From Image', 'description': 'A detailed description.', 'category': 'Category A,Category B', 'image_url': 'http://mock-image-url.com/image.jpg'}
+        )
 
 def test_catalog_intake_category_query(client, mock_dependencies):
     """Tests catalog intake with category query, leading to AI generation of multiple products."""
-    mock_dependencies["genai"].GenerativeModel.return_value.generate_content.return_value.text = json.dumps([
+    # Specific mock for this test to ensure a list is returned
+    specific_mock_response = json.dumps([
         {"name": "Produto Cat 1", "description": "Desc Cat 1"},
         {"name": "Produto Cat 2", "description": "Desc Cat 2"}
     ])
-    headers = {"Authorization": "Bearer fake_token"}
-    response = client.post('/api/agents/catalog-intake', headers=headers, json={'category_query': 'Bebidas'})
-    assert response.status_code == 202
-    assert "Sugestões de produtos para a categoria 'Bebidas' geradas e enviadas para aprovação." in response.json['message']
-    assert len(response.json['productIds']) == 2
-    assert mock_dependencies["requests_post"].call_count == 2 # Two products created
+    
+    with patch.object(mock_dependencies["gemini_model_mock"].generate_content.return_value, 'text', specific_mock_response):
+        headers = {"Authorization": "Bearer fake_token"}
+        response = client.post('/api/agents/catalog-intake', headers=headers, json={'category_query': 'Bebidas'})
+        
+        assert response.status_code == 202
+        assert "Sugestões de produtos para a categoria 'Bebidas' geradas e enviadas para aprovação." in response.json['message']
+        assert len(response.json['productIds']) == 2
+        assert mock_dependencies["requests_post"].call_count == 2 # Two products created
