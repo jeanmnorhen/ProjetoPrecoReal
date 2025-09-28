@@ -236,3 +236,69 @@ jobs:
             echo "$VAR_VALUE" | vercel env add $VAR_NAME production --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }}
           done
           cd -
+
+      - name: Checkout repository - Frontend
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+        working-directory: frontend-tester
+
+      - name: Install Vercel CLI - Frontend
+        run: npm install -g vercel@latest
+        working-directory: frontend-tester
+
+      - name: Install Frontend Dependencies
+        run: npm install
+        working-directory: frontend-tester
+
+      - name: Create .env.test.local for testing
+        run: |
+          echo "NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}" >> .env.test.local
+          echo "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}" >> .env.test.local
+          echo "NEXT_PUBLIC_FIREBASE_PROJECT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}" >> .env.test.local
+          echo "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}" >> .env.test.local
+          echo "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.test.local
+          echo "NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}" >> .env.test.local
+          echo "NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}" >> .env.test.local
+        working-directory: frontend-tester
+
+      - name: Debug .env.test.local content
+        run: cat .env.test.local
+        working-directory: frontend-tester
+
+      - name: Run Frontend Tests
+        run: npm run test
+        working-directory: frontend-tester
+
+      - name: Build Frontend
+        run: npm run build
+        working-directory: frontend-tester
+        env:
+          NEXT_PUBLIC_USERS_API_URL: ${{ steps.deploy_servico_usuarios.outputs.url }}
+          NEXT_PUBLIC_SEARCH_API_URL: ${{ steps.deploy_servico_busca.outputs.url }}
+          NEXT_PUBLIC_MONITORING_API_URL: ${{ steps.deploy_servico_monitoramento.outputs.url }}
+          NEXT_PUBLIC_AI_API_URL: ${{ steps.deploy_servico_agentes_ia.outputs.url }}
+          NEXT_PUBLIC_STORES_API_URL: ${{ steps.deploy_servico_lojas.outputs.url }}
+          NEXT_PUBLIC_OFFERS_API_URL: ${{ steps.deploy_servico_ofertas.outputs.url }}
+          NEXT_PUBLIC_PRODUCTS_API_URL: ${{ steps.deploy_servico_produtos.outputs.url }}
+          NEXT_PUBLIC_HEALTHCHECK_API_URL: ${{ steps.deploy_servico_healthcheck.outputs.url }}
+          NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
+          NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
+          NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
+
+      - name: Deploy Frontend to Vercel
+        run: |
+          vercel deploy --prod --token ${{ secrets.VERCEL_TOKEN }} --scope ${{ secrets.VERCEL_ORG_ID }} --confirm \
+          --build-env NEXT_PUBLIC_USERS_API_URL=${{ steps.deploy_servico_usuarios.outputs.url }} \
+          --build-env NEXT_PUBLIC_SEARCH_API_URL=${{ steps.deploy_servico_busca.outputs.url }} \
+          --build-env NEXT_PUBLIC_MONITORING_API_URL=${{ steps.deploy_servico_monitoramento.outputs.url }} \
+          --build-env NEXT_PUBLIC_AI_API_URL=${{ steps.deploy_servico_agentes_ia.outputs.url }} \
+          --build-env NEXT_PUBLIC_STORES_API_URL=${{ steps.deploy_servico_lojas.outputs.url }} \
+          --build-env NEXT_PUBLIC_OFFERS_API_URL=${{ steps.deploy_servico_ofertas.outputs.url }} \
+          --build-env NEXT_PUBLIC_PRODUCTS_API_URL=${{ steps.deploy_servico_produtos.outputs.url }} \
+          --build-env NEXT_PUBLIC_HEALTHCHECK_API_URL=${{ steps.deploy_servico_healthcheck.outputs.url }}
+        working-directory: frontend-tester
