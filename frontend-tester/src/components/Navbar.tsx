@@ -1,7 +1,6 @@
 // frontend-tester/src/components/Navbar.tsx
 "use client";
 
-import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
 import { auth } from "../../lib/firebase";
 import { useRouter } from "next/navigation";

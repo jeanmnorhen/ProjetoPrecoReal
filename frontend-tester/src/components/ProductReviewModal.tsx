@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import Image from "next/image";
 
 interface Product {
   id: string;
@@ -76,8 +77,12 @@ export default function ProductReviewModal({
       alert("Produto atualizado com sucesso!");
       onClose();
       // onProductApproved(); // Optionally refresh parent list if needed after edit
-    } catch (err: any) {
-      setError(err.message || "Erro ao salvar alterações.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Erro ao salvar alterações.");
+      }
     } finally {
       setLoading(false);
     }
@@ -117,7 +122,7 @@ export default function ProductReviewModal({
             <label className="block text-sm font-medium text-gray-700">URL da Imagem Principal</label>
             <input type="text" name="image_url" value={editedProduct.image_url || ''} onChange={handleChange} className="mt-1 block w-full border-gray-300 rounded-md shadow-sm" />
             {editedProduct.image_url && (
-              <img src={editedProduct.image_url} alt="Product Image" className="mt-2 max-h-48 object-contain" />
+              <Image src={editedProduct.image_url} alt="Product Image" width={192} height={192} className="mt-2 max-h-48 w-auto object-contain" />
             )}
           </div>
           {/* TODO: Adicionar lógica para múltiplas imagens e seleção da principal */}

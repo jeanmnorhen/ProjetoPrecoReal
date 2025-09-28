@@ -1,12 +1,11 @@
 // frontend-tester/src/app/admin/canonicos/page.tsx
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import AdminLayout from "../../../components/AdminLayout";
 import { useAuth } from "../../../context/AuthContext";
-// import CanonicalProductsTable from "../../../components/CanonicalProductsTable"; // Removido, será substituído
-// import ProductFormModal from "../../../components/ProductFormModal"; // Removido, será substituído
 
+// Tipos específicos para payload e resultado
 interface Product {
   id?: string;
   name: string;
@@ -16,7 +15,26 @@ interface Product {
   image_url?: string;
 }
 
-const AGENTS_API_URL = process.env.NEXT_PUBLIC_AI_API_URL; // Usar NEXT_PUBLIC_AI_API_URL
+interface CatalogIntakePayload {
+  text_query?: string;
+  category_query?: string;
+  image_base64?: string;
+}
+
+interface CreationResponseDetails {
+  message: string;
+  productId: string;
+}
+
+interface CatalogIntakeResult {
+  message: string;
+  product?: Product;
+  productIds?: string[];
+  imageUrl?: string;
+  details?: CreationResponseDetails;
+}
+
+const AGENTS_API_URL = process.env.NEXT_PUBLIC_AI_API_URL;
 
 export default function CatalogFeederPage() {
   const { idToken } = useAuth();
@@ -24,7 +42,7 @@ export default function CatalogFeederPage() {
   const [categoryQuery, setCategoryQuery] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<CatalogIntakeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,7 +68,7 @@ export default function CatalogFeederPage() {
       return;
     }
 
-    const payload: any = {};
+    const payload: CatalogIntakePayload = {};
     if (textQuery) {
       payload.text_query = textQuery;
     } else if (categoryQuery) {
@@ -68,7 +86,7 @@ export default function CatalogFeederPage() {
           setProcessing(false);
         }
       };
-      return; // Retorna para aguardar o FileReader
+      return; 
     } else {
       setError("Por favor, forneça um texto, categoria ou imagem.");
       setProcessing(false);
@@ -78,7 +96,7 @@ export default function CatalogFeederPage() {
     await sendRequest(payload);
   };
 
-  const sendRequest = async (payload: any) => {
+  const sendRequest = async (payload: CatalogIntakePayload) => {
     try {
       const response = await fetch(`${AGENTS_API_URL}/api/agents/catalog-intake`, {
         method: 'POST',
@@ -94,8 +112,12 @@ export default function CatalogFeederPage() {
         throw new Error(data.error || `HTTP error! status: ${response.status}`);
       }
       setResult(data);
-    } catch (err: any) {
-      setError(err.message || "Ocorreu um erro desconhecido.");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Ocorreu um erro desconhecido.");
+      }
     } finally {
       setProcessing(false);
     }

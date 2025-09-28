@@ -1,8 +1,9 @@
 // frontend-tester/src/components/CanonicalProductsTable.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
+import Image from "next/image";
 
 interface Product {
   id: string;
@@ -27,7 +28,7 @@ export default function CanonicalProductsTable({ onEditProduct }: CanonicalProdu
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     if (!idToken || !PRODUCTS_API_URL) {
       setError("Token de autenticação ou URL da API de Produtos não disponível.");
       setLoading(false);
@@ -54,11 +55,11 @@ export default function CanonicalProductsTable({ onEditProduct }: CanonicalProdu
     } finally {
       setLoading(false);
     }
-  };
+  }, [idToken]);
 
   useEffect(() => {
     fetchProducts();
-  }, [idToken]);
+  }, [fetchProducts]);
 
   const handleDeleteProduct = async (productId: string) => {
     if (!idToken || !PRODUCTS_API_URL) {
@@ -151,7 +152,7 @@ export default function CanonicalProductsTable({ onEditProduct }: CanonicalProdu
                   <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.id}</td>
                   <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-700">
                     {product.image_url ? (
-                      <img src={product.image_url} alt={product.name} className="h-10 w-10 object-cover rounded-full" />
+                      <Image src={product.image_url} alt={product.name} width={40} height={40} className="h-10 w-10 object-cover rounded-full" />
                     ) : (
                       <span className="text-gray-400">Sem Imagem</span>
                     )}

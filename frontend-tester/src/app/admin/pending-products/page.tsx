@@ -4,7 +4,8 @@
 import { useState, useEffect, useCallback } from "react";
 import AdminLayout from "../../../components/AdminLayout";
 import { useAuth } from "../../../context/AuthContext";
-import ProductReviewModal from "../../../components/ProductReviewModal"; // Importar o modal
+import ProductReviewModal from "../../../components/ProductReviewModal";
+import Image from "next/image";
 
 interface Product {
   id: string;
@@ -16,6 +17,11 @@ interface Product {
   created_at: string; // ISO string
 }
 
+interface ApiResponse {
+  products?: Product[];
+  error?: string;
+}
+
 const PRODUCTS_API_URL = process.env.NEXT_PUBLIC_PRODUCTS_API_URL;
 
 export default function PendingProductsPage() {
@@ -23,37 +29,29 @@ export default function PendingProductsPage() {
   const [pendingProducts, setPendingProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false); // Estado para controlar o modal
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null); // Produto selecionado para revisão
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const fetchPendingProducts = useCallback(async () => {
-    if (!idToken) {
-      setError("Token de autenticação não disponível.");
-      setLoading(false);
-      return;
-    }
-    if (!PRODUCTS_API_URL) {
-      setError("URL da API de Produtos não configurada.");
+    if (!idToken || !PRODUCTS_API_URL) {
+      setError("Token de autenticação ou URL da API não disponível.");
       setLoading(false);
       return;
     }
 
     try {
       const response = await fetch(`${PRODUCTS_API_URL}/api/products/pending`, {
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
+        headers: { Authorization: `Bearer ${idToken}` },
       });
 
+      const data: ApiResponse = await response.json();
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
       setPendingProducts(data.products || []);
-    } catch (err: any) {
-      setError(err.message || "Ocorreu um erro desconhecido ao buscar produtos pendentes.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Ocorreu um erro desconhecido.");
     } finally {
       setLoading(false);
     }
@@ -71,7 +69,7 @@ export default function PendingProductsPage() {
   const handleCloseReviewModal = () => {
     setIsModalOpen(false);
     setSelectedProduct(null);
-    fetchPendingProducts(); // Recarrega a lista após fechar o modal
+    fetchPendingProducts();
   };
 
   const handleApprove = async (productId: string) => {
@@ -79,18 +77,16 @@ export default function PendingProductsPage() {
     try {
       const response = await fetch(`${PRODUCTS_API_URL}/api/products/${productId}/approve`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
+        headers: { Authorization: `Bearer ${idToken}` },
       });
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData: { error?: string } = await response.json();
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
       alert("Produto aprovado com sucesso!");
-      handleCloseReviewModal(); // Fecha o modal e recarrega
-    } catch (err: any) {
-      alert(`Erro ao aprovar produto: ${err.message}`);
+      handleCloseReviewModal();
+    } catch (err: unknown) {
+      alert(`Erro ao aprovar produto: ${err instanceof Error ? err.message : "Erro desconhecido"}`);
     }
   };
 
@@ -99,18 +95,16 @@ export default function PendingProductsPage() {
     try {
       const response = await fetch(`${PRODUCTS_API_URL}/api/products/${productId}/reject`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
+        headers: { Authorization: `Bearer ${idToken}` },
       });
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData: { error?: string } = await response.json();
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
       alert("Produto rejeitado com sucesso!");
-      handleCloseReviewModal(); // Fecha o modal e recarrega
-    } catch (err: any) {
-      alert(`Erro ao rejeitar produto: ${err.message}`);
+      handleCloseReviewModal();
+    } catch (err: unknown) {
+      alert(`Erro ao rejeitar produto: ${err instanceof Error ? err.message : "Erro desconhecido"}`);
     }
   };
 
@@ -165,7 +159,7 @@ export default function PendingProductsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.category}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {product.image_url && (
-                        <img src={product.image_url} alt={product.name} className="h-10 w-10 object-cover rounded-full" />
+                        <Image src={product.image_url} alt={product.name} width={40} height={40} className="h-10 w-10 object-cover rounded-full" />
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.status}</td>
@@ -186,13 +180,12 @@ export default function PendingProductsPage() {
         )}
       </div>
 
-      {/* Modal de Revisão */}
       <ProductReviewModal
         isOpen={isModalOpen}
         onClose={handleCloseReviewModal}
         product={selectedProduct}
-        onProductApproved={() => handleApprove(selectedProduct!.id)} // Passa a função de aprovação
-        onProductRejected={() => handleReject(selectedProduct!.id)} // Passa a função de rejeição
+        onProductApproved={() => handleApprove(selectedProduct!.id)}
+        onProductRejected={() => handleReject(selectedProduct!.id)}
       />
     </AdminLayout>
   );

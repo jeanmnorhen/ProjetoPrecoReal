@@ -89,7 +89,7 @@ function AddToStoreModal({
 
 // Main Page Component
 export default function VitrinePage() {
-  const { idToken, currentUser } = useAuth();
+  const { idToken } = useAuth();
   const [stores, setStores] = useState<Store[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState<string>("");
   const [allProducts, setAllProducts] = useState<Product[]>([]);
