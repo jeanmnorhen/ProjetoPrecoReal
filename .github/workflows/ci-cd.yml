@@ -242,6 +242,49 @@ jobs:
         run: npm install
         working-directory: frontend-tester
 
+      - name: Update Frontend Environment Variables
+        shell: bash
+        run: |
+          echo "--- Updating environment for project: frontend-tester ---"
+          cd frontend-tester
+          vercel link --project frontend-tester --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} --yes
+
+          ENV_VARS=(
+            "NEXT_PUBLIC_USERS_API_URL"
+            "NEXT_PUBLIC_SEARCH_API_URL"
+            "NEXT_PUBLIC_MONITORING_API_URL"
+            "NEXT_PUBLIC_AI_API_URL"
+            "NEXT_PUBLIC_STORES_API_URL"
+            "NEXT_PUBLIC_OFFERS_API_URL"
+            "NEXT_PUBLIC_PRODUCTS_API_URL"
+            "NEXT_PUBLIC_HEALTHCHECK_API_URL"
+          )
+          URLS=(
+            "${{ needs.deploy-microservices.outputs.servico_usuarios_url }}"
+            "${{ needs.deploy-microservices.outputs.servico_busca_url }}"
+            "${{ needs.deploy-microservices.outputs.servico_monitoramento_url }}"
+            "${{ needs.deploy-microservices.outputs.servico_agentes_ia_url }}"
+            "${{ needs.deploy-microservices.outputs.servico_lojas_url }}"
+            "${{ needs.deploy-microservices.outputs.servico_ofertas_url }}"
+            "${{ needs.deploy-microservices.outputs.servico_produtos_url }}"
+            "${{ needs.deploy-microservices.outputs.servico_healthcheck_url }}"
+          )
+
+          for i in ${!URLS[@]}; do
+            VAR_NAME=${ENV_VARS[$i]}
+            VAR_VALUE=${URLS[$i]}
+
+            if [[ -z "$VAR_VALUE" ]]; then
+              echo "Warning: URL for $VAR_NAME is empty. Skipping."
+              continue
+            fi
+
+            echo "Setting $VAR_NAME for frontend-tester"
+            yes | vercel env rm $VAR_NAME production --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }} 2>/dev/null || true
+            echo "$VAR_VALUE" | vercel env add $VAR_NAME production --scope=${{ secrets.VERCEL_ORG_ID }} --token=${{ secrets.VERCEL_TOKEN }}
+          done
+          cd -
+
       - name: Create .env.test.local for testing
         run: |
           echo "NEXT_PUBLIC_FIREBASE_API_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}" >> .env.test.local
