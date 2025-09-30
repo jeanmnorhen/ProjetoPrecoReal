@@ -69,10 +69,10 @@ for TARGET_PROJECT in $CONSUMERS; do
   
   # Remove the old variable, ignoring errors if it doesn't exist.
   # The 'yes |' pipe is to automatically confirm the removal.
-  yes | vercel env rm $CHANGED_VAR_NAME production --scope=$VERCEL_ORG_ID --token=$VERCEL_TOKEN --project=$TARGET_PROJECT 2>/dev/null || true
+  yes | vercel env rm $CHANGED_VAR_NAME production --scope=$VERCEL_ORG_ID --token=$VERCEL_TOKEN 2>/dev/null || true
   
   # Add the new variable
-  echo "$CHANGED_VAR_VALUE" | vercel env add $CHANGED_VAR_NAME production --scope=$VERCEL_ORG_ID --token=$VERCEL_TOKEN --project=$TARGET_PROJECT
+  echo "$CHANGED_VAR_VALUE" | vercel env add $CHANGED_VAR_NAME production --scope=$VERCEL_ORG_ID --token=$VERCEL_TOKEN
 done
 
 echo "--- Finished updating consumers for $CHANGED_VAR_NAME ---"

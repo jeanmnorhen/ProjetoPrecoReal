@@ -255,8 +255,8 @@ jobs:
             fi
 
             echo "Setting $VAR_NAME for frontend-tester"
-            yes | vercel env rm "$VAR_NAME" production --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}" --project=frontend-tester 2>/dev/null || true
-            echo "$TRIMMED_VAR_VALUE" | vercel env add "$VAR_NAME" production --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}" --project=frontend-tester
+            yes | vercel env rm "$VAR_NAME" production --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}" 2>/dev/null || true
+            echo "$TRIMMED_VAR_VALUE" | vercel env add "$VAR_NAME" production --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}"
           done
 
       - name: Checkout repository - Frontend
