@@ -233,7 +233,7 @@ def test_health_check_pg_error(client, mocker):
         "initialization_errors": {"firestore": None, "postgresql_engine": None, "postgresql_table": None, "postgresql_query": "Connection failed", "kafka_producer": None}
     })
 
-    response = client.get('/health')
+    response = client.get('/api/health')
     assert response.status_code == 503
     assert response.json["dependencies"]["postgresql_connection"] == "error during query: Connection failed"
     assert response.json["initialization_errors"]["postgresql_query"] == "Connection failed"
