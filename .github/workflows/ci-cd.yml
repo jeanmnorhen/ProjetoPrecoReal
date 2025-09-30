@@ -198,9 +198,13 @@ jobs:
         shell: bash
         run: |
           echo "--- Updating environment for project: frontend-tester ---"
+          
+          # Link project to Vercel
           cd frontend-tester
           vercel link --project frontend-tester --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}" --yes
+          cd -
 
+          # Define arrays for variables and their corresponding deployment steps
           ENV_VARS=(
             "NEXT_PUBLIC_USERS_API_URL"
             "NEXT_PUBLIC_SEARCH_API_URL"
@@ -221,21 +225,39 @@ jobs:
             "${{ steps.deploy_servico_produtos.outputs.url }}"
             "${{ steps.deploy_servico_healthcheck.outputs.url }}"
           )
+          SHOULD_DEPLOY_FLAGS=(
+            "${{ steps.deploy_servico_usuarios.outputs.should_deploy }}"
+            "${{ steps.deploy_servico_busca.outputs.should_deploy }}"
+            "${{ steps.deploy_servico_monitoramento.outputs.should_deploy }}"
+            "${{ steps.deploy_servico_agentes_ia.outputs.should_deploy }}"
+            "${{ steps.deploy_servico_lojas.outputs.should_deploy }}"
+            "${{ steps.deploy_servico_ofertas.outputs.should_deploy }}"
+            "${{ steps.deploy_servico_produtos.outputs.should_deploy }}"
+            "${{ steps.deploy_servico_healthcheck.outputs.should_deploy }}"
+          )
 
           for i in ${!URLS[@]}; do
+            # Only update if the service was actually deployed in this run
+            if [[ "${SHOULD_DEPLOY_FLAGS[$i]}" != "true" ]]; then
+              echo "Skipping env var update for ${ENV_VARS[$i]} as it was not deployed."
+              continue
+            fi
+
             VAR_NAME=${ENV_VARS[$i]}
             VAR_VALUE=${URLS[$i]}
 
-            if [[ -z "$VAR_VALUE" ]]; then
-              echo "Warning: URL for $VAR_NAME is empty. Skipping."
+            # Trim whitespace and newlines from the URL
+            TRIMMED_VAR_VALUE=$(echo "$VAR_VALUE" | tr -d '[:space:]')
+
+            if [[ -z "$TRIMMED_VAR_VALUE" ]]; then
+              echo "Warning: URL for $VAR_NAME is empty after trimming. Skipping."
               continue
             fi
 
             echo "Setting $VAR_NAME for frontend-tester"
-            yes | vercel env rm "$VAR_NAME" production --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}" 2>/dev/null || true
-            echo "$VAR_VALUE" | vercel env add "$VAR_NAME" production --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}"
+            yes | vercel env rm "$VAR_NAME" production --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}" --project=frontend-tester 2>/dev/null || true
+            echo "$TRIMMED_VAR_VALUE" | vercel env add "$VAR_NAME" production --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}" --project=frontend-tester
           done
-          cd -
 
       - name: Checkout repository - Frontend
         uses: actions/checkout@v4
