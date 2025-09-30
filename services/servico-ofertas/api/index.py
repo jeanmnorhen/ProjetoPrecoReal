@@ -28,7 +28,7 @@ kafka_producer_init_error = None
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=['https://frontend-tester-1foc8lpkl-jeanmnorhens-projects.vercel.app'])
 
-# --- Funções Auxiliares ---
+# --- Funções Auxiliares ---1
 
 def check_permission(user_id, store_id):
     servico_usuarios_url = os.environ.get('SERVICO_USUARIOS_URL')

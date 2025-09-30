@@ -22,7 +22,7 @@ firebase_init_error = None
 es_init_error = None
 kafka_consumer_init_error = None
 
-# --- Firebase Admin SDK Initialization ---
+# --- Firebase Admin SDK Initialization ---1
 db = None
 if firebase_admin:
     try:
