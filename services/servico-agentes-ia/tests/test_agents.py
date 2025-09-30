@@ -69,7 +69,7 @@ def mock_all_dependencies():
 @pytest.fixture
 def client():
     """A test client for the app."""
-    from services.servico_agentes_ia.api.index import app
+    from api.index import app
     app.config['TESTING'] = True
     with app.test_client() as client:
         yield client

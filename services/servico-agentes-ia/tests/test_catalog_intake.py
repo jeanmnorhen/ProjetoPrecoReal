@@ -46,7 +46,7 @@ def mock_dependencies():
     with patch.object(api_index, 'db', MagicMock()) as mock_db, \
          patch.object(api_index, 'producer', MagicMock()) as mock_producer, \
          patch.object(api_index, 'auth', MagicMock()) as mock_auth, \
-         patch('services.servico_agentes_ia.api.index.get_gemini_model', MagicMock()) as mock_get_gemini_model, \
+         patch('api.index.get_gemini_model', MagicMock()) as mock_get_gemini_model, \
          patch('requests.get', MagicMock()) as mock_requests_get, \
          patch('requests.post', MagicMock()) as mock_requests_post, \
          patch('PIL.Image.open', MagicMock()) as mock_image_open, \
