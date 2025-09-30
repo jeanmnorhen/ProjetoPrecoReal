@@ -31,8 +31,7 @@ def mock_env_vars():
     }):
         yield
 
-def test_health_check_all_services_ok(client):
-    with mock.patch('services.servico_healthcheck.api.index.requests.get') as mock_get:
+    with mock.patch('api.index.requests.get') as mock_get:
         # Configure mock_get to return a successful response for all services
         mock_response = mock.Mock()
         mock_response.status_code = 200
@@ -50,8 +49,7 @@ def test_health_check_all_services_ok(client):
             expected_url = os.environ.get(SERVICES_TO_MONITOR[service_name]) + health_path
             assert any(expected_url in call.args[0] for call in mock_get.call_args_list)
 def test_health_check_some_services_degraded(client):
-    with mock.patch('services.servico_healthcheck.api.index.requests.get') as mock_get:
-        # Configure mock_get to simulate some services being down
+               with mock.patch('api.index.requests.get') as mock_get:        # Configure mock_get to simulate some services being down
         def mock_get_side_effect(url, *args, **kwargs):
             mock_response = mock.Mock()
             if "mock-ai-service" in url:
@@ -85,7 +83,7 @@ def test_health_check_some_services_degraded(client):
 def test_health_check_service_url_not_configured(client):
     # Temporarily remove one service URL from environment for this test
     with mock.patch.dict(os.environ, {"SERVICO_USUARIOS_URL": ""}):
-        with mock.patch('services.servico_healthcheck.api.index.requests.get') as mock_get:
+    with mock.patch('api.index.requests.get') as mock_get:
             # All other services are mocked to be ok
             mock_response = mock.Mock()
             mock_response.status_code = 200
