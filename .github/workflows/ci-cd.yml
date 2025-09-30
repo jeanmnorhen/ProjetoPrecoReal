@@ -40,18 +40,18 @@ jobs:
 
       - name: Run tests for servico-agentes-ia
         run: |
-          pip install -r services/servico_agentes_ia/requirements.txt
-          pytest services/servico_agentes_ia/tests
+          pip install -r services/servico-agentes-ia/requirements.txt
+          pytest services/servico-agentes-ia/tests
 
       - name: Run tests for servico-lojas
         run: |
-          pip install -r services/servico_lojas/requirements.txt
-          pytest services/servico_lojas/tests
+          pip install -r services/servico-lojas/requirements.txt
+          pytest services/servico-lojas/tests
 
       - name: Run tests for servico-ofertas
         run: |
-          pip install -r services/servico_ofertas/requirements.txt
-          pytest services/servico_ofertas/tests
+          pip install -r services/servico-ofertas/requirements.txt
+          pytest services/servico-ofertas/tests
 
       - name: Run tests for servico-produtos
         run: |
@@ -60,8 +60,8 @@ jobs:
 
       - name: Run tests for servico-healthcheck
         run: |
-          pip install -r services/servico_healthcheck/requirements.txt
-          pytest services/servico_healthcheck/tests
+          pip install -r services/servico-healthcheck/requirements.txt
+          pytest services/servico-healthcheck/tests
 
   deploy-microservices:
     runs-on: ubuntu-latest
@@ -118,7 +118,7 @@ jobs:
         id: deploy_servico_agentes_ia
         uses: ./.github/actions/deploy-service
         with:
-          service_path: services/servico_agentes_ia
+          service_path: services/servico-agentes-ia
           vercel_project_name: servico-agentes-ia
           vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
@@ -127,7 +127,7 @@ jobs:
         id: deploy_servico_lojas
         uses: ./.github/actions/deploy-service
         with:
-          service_path: services/servico_lojas
+          service_path: services/servico-lojas
           vercel_project_name: servico-lojas
           vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
@@ -136,7 +136,7 @@ jobs:
         id: deploy_servico_ofertas
         uses: ./.github/actions/deploy-service
         with:
-          service_path: services/servico_ofertas
+          service_path: services/servico-ofertas
           vercel_project_name: servico-ofertas
           vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
@@ -154,7 +154,7 @@ jobs:
         id: deploy_servico_healthcheck
         uses: ./.github/actions/deploy-service
         with:
-          service_path: services/servico_healthcheck
+          service_path: services/servico-healthcheck
           vercel_project_name: servico-healthcheck
           vercel_org_id: ${{ secrets.VERCEL_ORG_ID }}
           vercel_token: ${{ secrets.VERCEL_TOKEN }}

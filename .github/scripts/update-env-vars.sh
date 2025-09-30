@@ -27,11 +27,11 @@ declare -A PROJECT_PATHS
 PROJECT_PATHS["servico-usuarios"]="services/servico-usuarios"
 PROJECT_PATHS["servico-busca"]="services/servico-busca"
 PROJECT_PATHS["servico-monitoramento"]="services/servico-monitoramento"
-PROJECT_PATHS["servico-agentes-ia"]="services/servico_agentes_ia"
-PROJECT_PATHS["servico-lojas"]="services/servico_lojas"
-PROJECT_PATHS["servico-ofertas"]="services/servico_ofertas"
+PROJECT_PATHS["servico-agentes-ia"]="services/servico-agentes-ia"
+PROJECT_PATHS["servico-lojas"]="services/servico-lojas"
+PROJECT_PATHS["servico-ofertas"]="services/servico-ofertas"
 PROJECT_PATHS["servico-produtos"]="services/servico-produtos"
-PROJECT_PATHS["servico-healthcheck"]="services/servico_healthcheck"
+PROJECT_PATHS["servico-healthcheck"]="services/servico-healthcheck"
 
 # Dependency map: key is the service URL variable, value is a space-separated list of Vercel project names that consume it.
 # frontend-tester is handled separately in the workflow.

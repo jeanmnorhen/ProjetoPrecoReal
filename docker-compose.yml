@@ -78,7 +78,7 @@ services:
       - .env
 
   servico-lojas:
-    build: ./services/servico_lojas
+    build: ./services/servico-lojas
     container_name: servico_lojas_container
     ports:
       - "8005:8005"
@@ -111,7 +111,7 @@ services:
       - .env
 
   servico-ofertas:
-    build: ./services/servico_ofertas
+    build: ./services/servico-ofertas
     container_name: servico_ofertas_container
     ports:
       - "8006:8006"
@@ -164,8 +164,8 @@ services:
     env_file:
       - .env
 
-  servico_agentes_ia:
-    build: ./services/servico_agentes_ia
+  servico-agentes-ia:
+    build: ./services/servico-agentes-ia
     container_name: servico_agentes_ia_container
     ports:
       - "8004:8004"
@@ -180,7 +180,7 @@ services:
       - .env
 
   servico-healthcheck:
-    build: ./services/servico_healthcheck
+    build: ./services/servico-healthcheck
     container_name: servico_healthcheck_container
     ports:
       - "8008:8008"
