@@ -3,7 +3,7 @@ import unittest.mock as mock
 import os
 import requests
 import sys
-import os
+
 # Adiciona o diretório raiz do serviço ao sys.path
 service_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if service_root not in sys.path:
@@ -31,12 +31,15 @@ def mock_env_vars():
     }):
         yield
 
+def test_health_check_all_services_ok(client):
     with mock.patch('api.index.requests.get') as mock_get:
         # Configure mock_get to return a successful response for all services
         mock_response = mock.Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"status": "ok"}
         mock_response.text = '{"status": "ok"}' # Set .text for raise_for_status
+        mock_get.side_effect = [mock_response] * len(SERVICES_TO_MONITOR)
+
         response = client.get('/api/health')
         assert response.status_code == 200
         assert response.json['status'] == 'ok'
@@ -48,6 +51,7 @@ def mock_env_vars():
             health_path = "/api/health"
             expected_url = os.environ.get(SERVICES_TO_MONITOR[service_name]) + health_path
             assert any(expected_url in call.args[0] for call in mock_get.call_args_list)
+
 def test_health_check_some_services_degraded(client):
     with mock.patch('api.index.requests.get') as mock_get:
         # Configure mock_get to simulate some services being down
@@ -86,7 +90,7 @@ def test_health_check_some_services_degraded(client):
 def test_health_check_service_url_not_configured(client):
     # Temporarily remove one service URL from environment for this test
     with mock.patch.dict(os.environ, {"SERVICO_USUARIOS_URL": ""}):
-    with mock.patch('api.index.requests.get') as mock_get:
+        with mock.patch('api.index.requests.get') as mock_get:
             # All other services are mocked to be ok
             mock_response = mock.Mock()
             mock_response.status_code = 200
