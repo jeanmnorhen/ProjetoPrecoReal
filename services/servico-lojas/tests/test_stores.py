@@ -138,7 +138,7 @@ def test_delete_store_unauthorized(client, mock_dependencies):
 def test_create_store_with_location(client, mock_dependencies):
     """Test creating a store with location data."""
     headers = {"Authorization": "Bearer fake_token"}
-    with patch('services.servico_lojas.api.index.requests.post') as mock_post:
+    with patch('api.index.requests.post') as mock_post:
         mock_post.return_value.raise_for_status.return_value = None
         store_data = {"name": "New Store", "location": {"latitude": -23.5, "longitude": -46.6}}
         response = client.post('/api/stores', headers=headers, json=store_data)

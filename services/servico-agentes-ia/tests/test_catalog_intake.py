@@ -8,13 +8,13 @@ import json
 import base64
 import requests
 
-# Add the project root directory to the path
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+# Add the service's root directory to the path
+service_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if service_root not in sys.path:
+    sys.path.insert(0, service_root)
 
 # Now we can import the app and its dependencies
-from services.servico_agentes_ia.api import index as api_index
+from api import index as api_index
 
 @pytest.fixture(autouse=True)
 def mock_env_vars():
