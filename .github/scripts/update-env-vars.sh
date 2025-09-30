@@ -65,14 +65,21 @@ for TARGET_PROJECT in $CONSUMERS; do
 
   echo "--- Updating environment for project: $TARGET_PROJECT in path $TARGET_PATH ---"
   
+  # Navigate into the service directory and link the project
+  cd "$TARGET_PATH"
+  vercel link --project "$TARGET_PROJECT" --scope="$VERCEL_ORG_ID" --token="$VERCEL_TOKEN" --yes
+  
   echo "Setting $CHANGED_VAR_NAME for $TARGET_PROJECT"
   
   # Remove the old variable, ignoring errors if it doesn't exist.
   # The 'yes |' pipe is to automatically confirm the removal.
-  yes | vercel env rm $CHANGED_VAR_NAME production --scope=$VERCEL_ORG_ID --token=$VERCEL_TOKEN 2>/dev/null || true
+  yes | vercel env rm "$CHANGED_VAR_NAME" production --scope="$VERCEL_ORG_ID" --token="$VERCEL_TOKEN" 2>/dev/null || true
   
   # Add the new variable
-  echo "$CHANGED_VAR_VALUE" | vercel env add $CHANGED_VAR_NAME production --scope=$VERCEL_ORG_ID --token=$VERCEL_TOKEN
+  echo "$CHANGED_VAR_VALUE" | vercel env add "$CHANGED_VAR_NAME" production --scope="$VERCEL_ORG_ID" --token="$VERCEL_TOKEN"
+  
+  # Return to the root directory
+  cd -
 done
 
 echo "--- Finished updating consumers for $CHANGED_VAR_NAME ---"
