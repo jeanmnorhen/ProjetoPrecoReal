@@ -38,9 +38,7 @@ def test_health_check_all_services_ok(client):
         mock_response.status_code = 200
         mock_response.json.return_value = {"status": "ok"}
         mock_response.text = '{"status": "ok"}' # Set .text for raise_for_status
-        mock_get.side_effect = [mock_response] * len(SERVICES_TO_MONITOR)
-
-        response = client.get('/health')
+        response = client.get('/api/health')
         assert response.status_code == 200
         assert response.json['status'] == 'ok'
         
@@ -48,7 +46,7 @@ def test_health_check_all_services_ok(client):
         for service_name in SERVICES_TO_MONITOR.keys():
             assert response.json['services'][service_name]['status'] == 'ok'
             # Check that requests.get was called for each service
-            health_path = "/health" if service_name == "servico_usuarios" else "/api/health"
+            health_path = "/api/health"
             expected_url = os.environ.get(SERVICES_TO_MONITOR[service_name]) + health_path
             assert any(expected_url in call.args[0] for call in mock_get.call_args_list)
 def test_health_check_some_services_degraded(client):
@@ -73,9 +71,7 @@ def test_health_check_some_services_degraded(client):
                 mock_response.raise_for_status.return_value = None
             return mock_response
         
-        mock_get.side_effect = mock_get_side_effect
-
-        response = client.get('/health')
+        response = client.get('/api/health')
         assert response.status_code == 503 # Overall status should be 503 if any service is not 'ok'
         assert response.json['status'] == 'degraded'
         
@@ -98,7 +94,7 @@ def test_health_check_service_url_not_configured(client):
             mock_response.raise_for_status.return_value = None
             mock_get.return_value = mock_response
 
-            response = client.get('/health')
+            response = client.get('/api/health')
             assert response.status_code == 503 # Should be 503 if any service URL is missing
             assert response.json['status'] == 'degraded'
             assert response.json['services']['servico_usuarios']['status'] == 'unavailable'

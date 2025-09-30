@@ -20,7 +20,7 @@ export default function HealthCheckPage() {
           return;
         }
         try {
-          const response = await fetch(`${HEALTHCHECK_API_URL}/health`);
+          const response = await fetch(`${HEALTHCHECK_API_URL}/api/health`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }

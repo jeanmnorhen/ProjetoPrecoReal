@@ -213,7 +213,7 @@ def test_health_check_all_ok(client, firebase_mock_db, kafka_mock_producer, mock
     postgis_mock_session = mocker.patch('api.index.db_session', mocker.MagicMock())
     postgis_mock_session.execute.return_value = MagicMock()
 
-    response = client.get('/health')
+    response = client.get('/api/health')
     assert response.status_code == 200
     assert response.json == {
         "environment_variables": {"FIREBASE_ADMIN_SDK_BASE64": "present", "POSTGRES_POSTGRES_URL": "present", "KAFKA_BOOTSTRAP_SERVER": "present", "KAFKA_API_KEY": "present", "KAFKA_API_SECRET": "present"},
