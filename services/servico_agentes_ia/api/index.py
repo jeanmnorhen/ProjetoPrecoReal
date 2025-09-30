@@ -22,7 +22,7 @@ except ImportError:
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=['https://frontend-tester-1foc8lpkl-jeanmnorhens-projects.vercel.app'])
 
-# --- Global Clients (Lazy Loaded) ---
+# --- Global Clients (Lazy Loaded) --- 
 db = None
 producer = None
 kafka_consumer_instance = None

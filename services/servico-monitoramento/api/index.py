@@ -15,7 +15,7 @@ import requests
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origins=['https://frontend-tester-1foc8lpkl-jeanmnorhens-projects.vercel.app'])
 
-# --- Variáveis globais para erros de inicialização ---
+# --- Variáveis globais para erros de inicialização ---1
 influxdb_init_error = None
 kafka_consumer_init_error = None
 
