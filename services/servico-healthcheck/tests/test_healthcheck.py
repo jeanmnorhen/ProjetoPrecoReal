@@ -49,7 +49,8 @@ def mock_env_vars():
             expected_url = os.environ.get(SERVICES_TO_MONITOR[service_name]) + health_path
             assert any(expected_url in call.args[0] for call in mock_get.call_args_list)
 def test_health_check_some_services_degraded(client):
-               with mock.patch('api.index.requests.get') as mock_get:        # Configure mock_get to simulate some services being down
+    with mock.patch('api.index.requests.get') as mock_get:
+        # Configure mock_get to simulate some services being down
         def mock_get_side_effect(url, *args, **kwargs):
             mock_response = mock.Mock()
             if "mock-ai-service" in url:
@@ -69,6 +70,8 @@ def test_health_check_some_services_degraded(client):
                 mock_response.raise_for_status.return_value = None
             return mock_response
         
+        mock_get.side_effect = mock_get_side_effect
+
         response = client.get('/api/health')
         assert response.status_code == 503 # Overall status should be 503 if any service is not 'ok'
         assert response.json['status'] == 'degraded'
