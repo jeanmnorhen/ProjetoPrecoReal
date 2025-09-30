@@ -1,4 +1,4 @@
-// 1frontend-tester/src/app/ofertas/page.tsx
+// frontend-tester/src/app/ofertas/page.tsx
 "use client";
 
 import { useState } from "react";
