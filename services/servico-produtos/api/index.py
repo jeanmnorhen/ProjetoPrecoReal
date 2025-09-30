@@ -22,7 +22,7 @@ producer = None
 firebase_init_error = None
 kafka_producer_init_error = None
 
-# --- Inicialização do Firebase Admin SDK (PADRONIZADO) ---
+# ---Inicialização do Firebase Admin SDK (PADRONIZADO) ---
 if firebase_admin:
     try:
         base64_sdk = os.environ.get('FIREBASE_ADMIN_SDK_BASE64')

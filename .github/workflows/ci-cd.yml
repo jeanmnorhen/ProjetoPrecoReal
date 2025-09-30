@@ -202,7 +202,6 @@ jobs:
           # Link project to Vercel
           cd frontend-tester
           vercel link --project frontend-tester --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}" --yes
-          cd -
 
           # Define arrays for variables and their corresponding deployment steps
           ENV_VARS=(
@@ -258,6 +257,9 @@ jobs:
             yes | vercel env rm "$VAR_NAME" production --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}" 2>/dev/null || true
             echo "$TRIMMED_VAR_VALUE" | vercel env add "$VAR_NAME" production --scope="${{ secrets.VERCEL_ORG_ID }}" --token="${{ secrets.VERCEL_TOKEN }}"
           done
+
+          # Return to the root directory
+          cd -
 
       - name: Checkout repository - Frontend
         uses: actions/checkout@v4
