@@ -27,20 +27,20 @@ declare -A PROJECT_PATHS
 PROJECT_PATHS["servico-usuarios"]="services/servico-usuarios"
 PROJECT_PATHS["servico-busca"]="services/servico-busca"
 PROJECT_PATHS["servico-monitoramento"]="services/servico-monitoramento"
-PROJECT_PATHS["servicoagentes"]="services/servico_agentes_ia"
-PROJECT_PATHS["servicolojas"]="services/servico_lojas"
-PROJECT_PATHS["servicoofertas"]="services/servico_ofertas"
+PROJECT_PATHS["servico-agentes-ia"]="services/servico_agentes_ia"
+PROJECT_PATHS["servico-lojas"]="services/servico_lojas"
+PROJECT_PATHS["servico-ofertas"]="services/servico_ofertas"
 PROJECT_PATHS["servico-produtos"]="services/servico-produtos"
 PROJECT_PATHS["servico-healthcheck"]="services/servico_healthcheck"
 
 # Dependency map: key is the service URL variable, value is a space-separated list of Vercel project names that consume it.
 # frontend-tester is handled separately in the workflow.
 declare -A DEPS
-DEPS["SERVICO_USUARIOS_URL"]="servicolojas servico-produtos servicoofertas servico-monitoramento servico-healthcheck"
+DEPS["SERVICO_USUARIOS_URL"]="servico-lojas servico-produtos servico-ofertas servico-monitoramento servico-healthcheck"
 DEPS["SERVICO_LOJAS_URL"]="servico-healthcheck"
-DEPS["SERVICO_PRODUTOS_URL"]="servicoagentes servico-monitoramento servico-healthcheck"
+DEPS["SERVICO_PRODUTOS_URL"]="servico-agentes-ia servico-monitoramento servico-healthcheck"
 DEPS["SERVICO_OFERTAS_URL"]="servico-healthcheck"
-DEPS["SERVICO_BUSCA_URL"]="servicoagentes servico-healthcheck"
+DEPS["SERVICO_BUSCA_URL"]="servico-agentes-ia servico-healthcheck"
 DEPS["SERVICO_AGENTES_IA_URL"]="servico-healthcheck"
 DEPS["SERVICO_MONITORAMENTO_URL"]="servico-healthcheck"
 DEPS["SERVICO_HEALTHCHECK_URL"]="" # No backend services consume this
