@@ -1,7 +1,19 @@
-Flask
-confluent-kafka
-google-generativeai
-Flask-Cors
+# Core web framework and server
+fastapi
+uvicorn
+python-multipart
+
+# Asynchronous tasks
+celery
+redis
+
+# LLM and Vision
+llama-cpp-python
+instructor
+opencv-python-headless
 Pillow
+
+# Existing dependencies
+confluent-kafka
 firebase-admin
 python-dotenv

@@ -12,6 +12,14 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  redis:
+    image: "redis:alpine"
+    container_name: redis_container
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
   zookeeper:
     image: wurstmeister/zookeeper
     container_name: zookeeper_container
@@ -164,18 +172,38 @@ services:
     env_file:
       - .env
 
-  servico-agentes-ia:
+  servico-agentes-ia-api:
     build: ./services/servico-agentes-ia
-    container_name: servico_agentes_ia_container
+    container_name: servico_agentes_ia_api_container
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8004 --reload
     ports:
       - "8004:8004"
     environment:
       KAFKA_BOOTSTRAP_SERVER: kafka:9092
-      CRON_SECRET: ${CRON_SECRET}
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      REDIS_URL: redis://redis:6379/0
       FIREBASE_ADMIN_SDK_BASE64: ${FIREBASE_ADMIN_SDK_BASE64}
+    volumes:
+      - uploads_data:/app/uploads
+      - ./services/servico-agentes-ia:/app/services/servico-agentes-ia # For hot-reloading
     depends_on:
       - kafka
+      - redis
+    env_file:
+      - .env
+
+  servico-agentes-ia-worker:
+    build: ./services/servico-agentes-ia
+    container_name: servico_agentes_ia_worker_container
+    command: celery -A api.celery_worker worker --loglevel=info
+    environment:
+      KAFKA_BOOTSTRAP_SERVER: kafka:9092
+      REDIS_URL: redis://redis:6379/0
+      FIREBASE_ADMIN_SDK_BASE64: ${FIREBASE_ADMIN_SDK_BASE64}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      - kafka
+      - redis
     env_file:
       - .env
 
@@ -185,7 +213,7 @@ services:
     ports:
       - "8008:8008"
     environment:
-      SERVICO_AGENTES_IA_URL: http://servico_agentes_ia:8004
+      SERVICO_AGENTES_IA_URL: http://servico-agentes-ia-api:8004
       SERVICO_BUSCA_URL: http://servico-busca:8002
       SERVICO_MONITORAMENTO_URL: http://servico-monitoramento:8003
       SERVICO_PRODUTOS_URL: http://servico-produtos:8007
@@ -193,7 +221,7 @@ services:
       SERVICO_LOJAS_URL: http://servico-lojas:8005
       SERVICO_OFERTAS_URL: http://servico-ofertas:8006
     depends_on:
-      - servico_agentes_ia
+      - servico-agentes-ia-api
       - servico-busca
       - servico-monitoramento
       - servico-produtos
@@ -232,7 +260,7 @@ services:
       - servico-ofertas
       - servico-busca
       - servico-monitoramento
-      - servico_agentes_ia
+      - servico-agentes-ia-api
       - servico-healthcheck
     env_file:
       - .env
@@ -241,3 +269,5 @@ volumes:
   postgres_data:
   elasticsearch_data:
   influxdb_data:
+  redis_data:
+  uploads_data:

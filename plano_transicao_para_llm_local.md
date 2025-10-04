@@ -1,104 +1,186 @@
-# Plano de Transição: Substituição do Gemini API por LLM Local no "Alimentador de Catálogo com IA"
+# RELATÓRIO DE IMPLEMENTAÇÃO LOCAL DE MODELOS MULTIMODAIS (MLLMs) PARA CRIAÇÃO AUTOMATIZADA DE CATÁLOGO DE PRODUTOS: Otimização GGUF e Arquitetura Assíncrona
 
-*Documento adaptado para as necessidades do projeto "Preço Real".*
+## I. Análise de Viabilidade e Seleção de Modelos Multimodais (MLLM)
 
-## I. Sumário Executivo e Escolha Estratégica de Modelos
+### A. O Caso de Uso: Automação de Fichas Técnicas de Produtos
 
-O presente relatório técnico detalha a seleção, otimização e implantação de modelos de linguagem grandes (LLMs) locais para substituir a dependência da API do Google Gemini no `servico-agentes-ia`. O objetivo é replicar a funcionalidade do "Alimentador de Catálogo com IA" — análise de imagens e geração de dados de produtos — utilizando uma arquitetura de microsserviços (Docker, FastAPI, Celery) em um ambiente com recursos computacionais estritamente limitados: o processador **Intel Xeon E5-2673 v3** e **16 GB de RAM**.
+O objetivo principal desta implementação é estabelecer um pipeline robusto capaz de ingerir uma imagem de produto e, em seguida, gerar dados estruturados essenciais, incluindo o nome do produto, a categorização precisa e uma descrição textual coerente e rica. Este processo automatizado visa preencher um "card de produto" de forma confiável. Tal aplicação exige a capacidade de um modelo não apenas para o reconhecimento visual detalhado (tarefa VLM, Vision-Language Model), mas também para a geração sofisticada e estruturada de linguagem natural (tarefa LLM, Large Language Model). A viabilidade reside na seleção de MLLMs otimizados para execução local.
 
-### 1.1. Estratégia de Mitigação de Risco e Recomendação de Modelos
+### B. Fundamentos dos MLLMs Locais: Arquitetura e Modelos Candidatos
 
-A restrição de 16 GB de RAM é o principal gargalo operacional. A inferência de LLMs em CPU exige que o modelo, o cache de contexto e a sobrecarga do sistema residam na memória principal. Exceder a RAM disponível levaria a um estado de *swapping* (uso de disco como memória), tornando a latência inaceitável.
+A proposta de utilizar modelos como LLaMA 3 e LLaVA está alinhada com as melhores práticas atuais para sistemas multimodais abertos. O LLaVA (Large Language and Vision Assistant) é reconhecido como o framework arquitetônico pioneiro para sistemas locais, ligando um codificador visual a um LLM.
 
-Para atender às duas necessidades distintas (análise de imagem e geração de texto), a recomendação é uma **abordagem híbrida com dois modelos especializados**:
+#### 1. A Estrutura Arquitetônica e a Escolha do Modelo
 
-1.  **Para Geração de Texto (a partir de texto):** O modelo escolhido é o **`Meta-Llama-3-8B-Instruct.Q4_K_M.gguf`**.
-    *   **Justificativa:** Este modelo oferece um excelente equilíbrio entre qualidade de geração de texto e consumo de recursos (~5.15 GB de RAM). É vastamente superior ao `CodeLlama` (proposto no plano original) para tarefas de conversação e geração de descrições criativas.
+A arquitetura MLLM opera em três componentes principais:
+1.  **Codificador Visual (Vision Encoder):** Responsável por processar a imagem de entrada e extrair características visuais. Historicamente, modelos como o CLIP (Contrastive Language–Image Pre-training), utilizando a variante ViT-L/14 (Vision Transformer - Large, Patch 14), são a base comum para o LLaVA, LLaVA-1.5 e arquiteturas subsequentes como Qwen VL e Llama 3 MLLM.
+2.  **Projetor:** Uma camada de rede neural (frequentemente uma MLP simples) que traduz os embeddings visuais do codificador para um formato que o LLM pode entender e incorporar em sua sequência de tokens. Este é o elo multimodal.
+3.  **Decodificador de Texto (Text Decoder):** O LLM base (como LLaMA ou Mistral) que recebe os embeddings visuais e gera o texto descritivo e estruturado.
 
-2.  **Para Análise de Imagem (Imagem para Texto):** O modelo escolhido é o **`llava-v1.5-7b-Q4_K_M.gguf`**.
-    *   **Justificativa:** LLaVA (Large Language and Vision Assistant) é o padrão-ouro para modelos de visão de código aberto. É a única opção viável para substituir a capacidade do `gemini-pro-vision` de analisar imagens. Seu consumo de RAM (~4.86 GB) é gerenciável, mas a inferência de visão em CPU terá **alta latência**, reforçando a necessidade de uma arquitetura assíncrona.
+Entre as opções sugeridas (LLaMA 3 e LLaVA), a variante **BakLLaVA** é tecnicamente superior para inferência local otimizada. BakLLaVA utiliza o eficiente **Mistral AI** como LLM base, mantendo o poder de processamento visual do LLaVA, resultando em um modelo que geralmente apresenta melhor desempenho na geração de linguagem, mantendo-se mais acessível ao hardware de consumo.
 
-**Mitigação de Qualidade e Erros:** Para garantir a consistência e a qualidade da saída, é indispensável o uso de **Engenharia de Prompt** avançada e a restrição da saída do modelo a um formato **JSON bem definido**, validado via **Pydantic** (conhecido como *Structured Output*). Isso transforma a tarefa de uma geração de texto livre para o preenchimento de um formulário estruturado, aumentando drasticamente a confiabilidade.
+#### 2. Otimização Essencial: GGUF e llama.cpp
 
-### 1.2. Visão Geral das Otimizações Críticas
+A execução de MLLMs em hardware de consumidor não seria viável sem técnicas agressivas de otimização de memória. O formato **GGUF (General Use Format)**, desenvolvido pelo projeto `llama.cpp`, é a tecnologia fundamental para esta viabilidade.
 
-O desempenho do sistema depende da execução rigorosa de três otimizações:
+O GGUF permite a **quantização** do modelo (compressão dos pesos) em níveis de precisão extremamente baixos (e.g., Q4_K_M, Q8_0, que representam 4-bit ou 8-bit, e até 1.5-bit), reduzindo drasticamente a pegada de memória e permitindo a inferência em tempo real. Por exemplo, um modelo de 7 bilhões de parâmetros (7B) em precisão padrão (FP16) exigiria cerca de 14 GB de memória. Com a quantização Q4_K_M, esse requisito cai para aproximadamente 4.5 GB, tornando-o gerenciável em GPUs com VRAM limitada ou mesmo apenas com a RAM do sistema.
 
-1.  **Aceleração de Baixo Nível (AVX2):** O runtime `llama-cpp-python` deve ser compilado dentro do Docker, ativando a biblioteca **OpenBLAS** para usar as instruções vetoriais AVX2 do processador Xeon.
-2.  **Gerenciamento de Recursos (`n_threads`):** O número de threads de inferência deve ser ajustado para usar os 12 Cores Físicos de forma eficiente, evitando a saturação dos Hyper-Threads.
-3.  **Arquitetura Assíncrona (Celery):** A alta latência da inferência em CPU deve ser isolada do frontend. O uso do **Celery** garante que a API (FastAPI) permaneça responsiva, processando as solicitações de IA em segundo plano.
+### C. Requisitos de Hardware e Otimização de Memória
 
-## II. Análise de Hardware e Otimização de Runtime
+#### 1. O Desafio da Memória Multimodal
 
-*(Esta seção permanece relevante, apenas recontextualizada para os novos modelos)*
+Ao lidar com MLLMs, a pegada de memória é composta pelo LLM quantizado mais os requisitos do Codificador Visual (CLIP) e seus embeddings. O Codificador Visual é um modelo separado (e.g., ViT-L/14) que, em implementações LLaVA, é frequentemente mantido em precisão mais alta ou em um formato ligeiramente separado, como o arquivo GGUF dedicado para o modelo CLIP (`BakLLaVA-1-clip-model.gguf`).
 
-O processador **Intel Xeon E5-2673 v3** (12 Cores / 24 Threads) com suporte a **AVX2** é o pilar do desempenho. A compilação do `llama-cpp-python` com OpenBLAS é um requisito não-negociável para acelerar as operações de matrizes, que são o coração da inferência. A gestão de threads via workers Celery (ex: 2 workers com `n_threads=6` cada) garantirá o uso ótimo dos 12 cores físicos.
+A otimização de memória deve, portanto, abordar ambas as partes. Se a quantização (como técnicas avançadas como LUQ) não for aplicada de forma uniforme ao MLLM completo, o Codificador Visual pode se tornar o gargalo de consumo de memória de pico. Para um modelo 7B quantizado (~4.5 GB), os pesos e as ativações do CLIP e o buffer de contexto exigem memória adicional, empurrando o requisito prático mínimo de VRAM para **8 GB** ou, preferencialmente, **12 GB a 16 GB** para garantir fluidez e acomodar contextos mais longos.
 
-## III. Plano de Implementação Detalhado
+#### 2. Fatores Críticos de Desempenho
 
-A transição será feita modificando o `servico-agentes-ia` e o `frontend-tester`.
+A performance de inferência em `llama.cpp` não depende unicamente da capacidade da VRAM, mas também da capacidade de processamento da CPU e da velocidade de transferência de dados.
 
-### Fase 1: Refatoração do `servico-agentes-ia`
+*   **VRAM:** GPUs de consumidor (como uma NVIDIA RTX 4070Ti SUPER com 16GB de VRAM) são ideais, permitindo carregar modelos maiores (como 14B ou 24B quantizados em IQ3_XS ou Q4_K_M) e atingir taxas de geração acima de 40 tokens por segundo, essenciais para a geração rápida de descrições ricas.
+*   **CPU e RAM:** O `llama.cpp` suporta inferência híbrida CPU+GPU, o que significa que se a VRAM for insuficiente, as camadas do modelo podem ser descarregadas (offloaded) para a RAM. Nesses casos, a frequência da RAM e o desempenho single-thread da CPU tornam-se fatores dominantes na latência de inferência, ditando a eficiência da troca de dados entre CPU e GPU.
 
-1.  **Atualizar `requirements.txt`**: Adicionar `fastapi`, `uvicorn`, `celery`, `redis`, `llama-cpp-python`, e `instructor`.
-2.  **Modificar `Dockerfile`**:
-    *   Instalar `libopenblas-dev` e `build-essential`.
-    *   Adicionar as variáveis de ambiente `FORCE_CMAKE=1` e `CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS"`.
-    *   Modificar o `pip install` para forçar a recompilação do `llama-cpp-python`.
-    *   Adicionar um script que baixa os modelos GGUF (`Llama-3-8B` e `llava-v1.5-7b`) para dentro da imagem Docker durante o build.
-3.  **Estruturar o Novo Serviço:**
-    *   Criar um arquivo para a aplicação **FastAPI** que servirá como gateway.
-    *   Criar um arquivo para a configuração do **Celery** e a definição dos workers.
-    *   Usar **Redis** (adicionado ao `docker-compose.yml`) como broker para o Celery.
+**Tabela 1: Comparativo de Viabilidade de MLLMs Quantizados (GGUF)**
 
-### Fase 2: Implementação da Lógica de IA Local
+| Modelo Base (LLM) | VLM Associado (e.g., CLIP) | Tamanho Típico GGUF (Q4_K_M) | Requisito Mínimo VRAM Estimado (Início) | Foco e Vantagem |
+| :--- | :--- | :--- | :--- | :--- |
+| LLaVA 1.5 - 7B | ViT-L/14 | ~4.5 GB (LLM) + CLIP | 8 GB (Híbrido CPU/GPU) | Alta performance de VLM em hardware restrito. |
+| **BakLLaVA 1 - 7B (Mistral)** | **CLIP** | **~4.5 GB (LLM) + CLIP** | **8 GB (Híbrido CPU/GPU)** | **Recomendado:** Baseado em Mistral (mais poderoso para linguagem). |
+| LLaVA-NeXT 13B | ViT-L/14 | ~8 GB (LLM) + CLIP | 12-16 GB | Maior precisão na categorização/descrição, exigindo mais VRAM. |
 
-1.  **Definir o Schema de Saída com Pydantic:**
-    ```python
-    # Em um arquivo de schemas
-    from pydantic import BaseModel, Field
-    from typing import List
+## II. Projeto da Arquitetura de Serviço de Inferência (MLOps Local)
 
-    class ProductData(BaseModel):
-        name: str = Field(description="Nome completo e conciso do produto, incluindo marca e volume/peso se aplicável.")
-        categories: List[str] = Field(description="Uma lista de 3 categorias, da mais genérica para a mais específica.")
-        description: str = Field(description="Uma descrição técnica e de marketing para o produto.")
-    ```
+### A. A Necessidade Crítica de Assincronicidade no Pipeline
 
-2.  **Criar as Tarefas Celery:**
-    *   **`generate_product_from_text(text_query: str) -> ProductData`**:
-        *   Carrega o modelo `Llama-3-8B-Instruct`.
-        *   Usa a biblioteca `instructor` para aplicar o schema `ProductData` à saída do LLM.
-        *   Retorna o objeto Pydantic validado.
-    *   **`generate_product_from_image(image_b64: str) -> ProductData`**:
-        *   Carrega o modelo `llava-v1.5-7b`.
-        *   Usa `instructor` e o mesmo schema `ProductData`.
-        *   Retorna o objeto Pydantic validado.
+A execução de tarefas multimodais em MLLMs, que envolvem a codificação visual da imagem seguida pela geração de longos trechos de texto, é intrinsecamente um *long-running process*. Mesmo com otimizações GGUF que atingem 40-60 tokens/segundo, a geração de descrições ricas pode levar vários segundos.
 
-3.  **Adaptar o Endpoint `catalog-intake`:**
-    *   Reescrever o endpoint `POST /api/agents/catalog-intake` (agora em FastAPI).
-    *   Em vez de chamar a API do Gemini, ele irá despachar a tarefa apropriada para o Celery:
-        *   Se receber `text_query`, chama `generate_product_from_text.delay(text_query)`.
-        *   Se receber `image_base64`, chama `generate_product_from_image.delay(image_b64)`.
-    *   O endpoint deve retornar imediatamente uma resposta **HTTP 202 Accepted** com o `task_id` da tarefa Celery.
+Se esta tarefa for executada no thread principal de uma web API síncrona, ela inevitavelmente bloqueará o event loop do servidor, causando timeouts para o usuário e paralisando o processamento de quaisquer outras requisições, comprometendo a escalabilidade e a experiência do usuário. A única solução arquitetônica viável para a execução de modelos de machine learning é a desvinculação da requisição HTTP do processamento pesado.
 
-4.  **Criar Endpoint de Status da Tarefa:**
-    *   Criar um novo endpoint `GET /api/agents/task-status/{task_id}`.
-    *   Este endpoint verificará o status da tarefa no backend do Celery.
-    *   Se pendente, retorna `{"status": "PENDING"}`.
-    *   Se concluída, retorna `{"status": "SUCCESS", "result": ...}` com os dados do produto gerado.
-    *   Se falhou, retorna `{"status": "FAILURE", "error": ...}`.
+A arquitetura recomendada utiliza **FastAPI** para gerenciar os endpoints e a entrada de dados, e **Celery** como um sistema de fila de tarefas, usando **Redis** ou RabbitMQ como broker e backend. Quando o cliente envia a imagem e o prompt, o FastAPI imediatamente retorna um `task_id` e atribui o trabalho de inferência ao Celery Worker. O cliente pode então consultar o status da tarefa, permitindo que a aplicação permaneça responsiva.
 
-### Fase 3: Integração com o Frontend (`frontend-tester`)
+### B. Gestão Robusta de Arquivos Multimodais (Imagem)
 
-1.  **Modificar a Página "Alimentador de Catálogo" (`/admin/canonicos/page.tsx`):**
-    *   A função `handleSubmit` agora receberá um `task_id` na resposta da chamada a `/api/agents/catalog-intake`.
-    *   Armazenar este `task_id` no estado do componente.
-2.  **Implementar Polling de Status:**
-    *   Usar uma biblioteca como **SWR** ou **React Query** (ou um `useEffect` com `setInterval`) para chamar periodicamente o novo endpoint `/api/agents/task-status/{task_id}`.
-    *   O polling deve ser condicional (só acontece quando há um `task_id` ativo).
-    *   Quando o status da tarefa for `SUCCESS`, exibir o resultado. Se for `FAILURE`, exibir o erro. Enquanto for `PENDING`, continuar exibindo a mensagem "Processando...".
+A forma como a imagem é transferida do endpoint para o worker é um ponto crucial de otimização, especialmente para garantir que o sistema possa lidar com imagens de alta resolução sem falhas de memória ou congestionamento da fila.
 
-## IV. Conclusão da Transição
+#### 1. Tratamento Inicial de Arquivos no FastAPI
 
-Ao final deste plano, o `servico-agentes-ia` será totalmente autônomo e não dependerá mais de APIs externas para sua funcionalidade principal. A arquitetura assíncrona garantirá que a experiência do usuário no frontend permaneça fluida, apesar da maior latência da inferência local em CPU, e o uso de structured output garantirá a qualidade e a consistência dos dados gerados para o catálogo de produtos.
+O FastAPI lida nativamente com o upload de arquivos grandes (como imagens) usando o tipo `UploadFile`, que implementa uma interface assíncrona baseada em `SpooledTemporaryFile`. Isso impede que o servidor consuma toda a memória RAM para o upload inicial, tratando o arquivo como um stream.
+
+#### 2. Estratégia de Transferência de Dados para o Celery
+
+Embora seja tecnicamente possível serializar o conteúdo binário da imagem (convertido para bytes e depois em Base64) e passá-lo diretamente como argumento na mensagem da tarefa Celery, esta prática é altamente desaconselhada para MLLMs, onde as imagens podem ser grandes. Imagens codificadas em Base64 criam strings de dados massivas que sobrecarregam o broker de mensagens (Redis), aumentam a latência de enfileiramento e limitam a escalabilidade do sistema.
+
+O padrão MLOps exige que arquivos grandes sejam desacoplados do broker. A arquitetura ideal é:
+
+1.  O endpoint FastAPI recebe a imagem e a salva em um volume de armazenamento persistente (e.g., um disco compartilhado, MinIO ou um volume Docker montado).
+2.  O FastAPI envia à tarefa Celery apenas a **referência do arquivo** (o caminho no sistema de arquivos ou um ID de storage) e os parâmetros do prompt.
+3.  O Celery Worker lê o arquivo de imagem do volume persistente, processa-o e armazena os resultados (o JSON gerado) no backend (e.g., Redis) ou em um banco de dados.
+
+Esta abordagem garante robustez e escalabilidade.
+
+**Tabela 2: Estratégias de Gerenciamento de Arquivos no Pipeline Assíncrono**
+
+| Estratégia | Transferência | Vantagens | Desvantagens | Recomendação para MLLM Local |
+| :--- | :--- | :--- | :--- | :--- |
+| 1. Byte Stream (Base64) | Codificação em string na mensagem Celery. | Simples de implementar no Python. | Risco de saturação do broker (Redis); Alta latência de serialização/desserialização. | **Não recomendado** (Risco de falha de serviço). |
+| 2. Path/Storage ID | FastAPI salva o arquivo, Celery recebe o caminho/ID. | Altamente escalável; Lida com arquivos grandes. | Requer sistema de arquivos compartilhado (volume Docker). | **Recomendado** (Robustez e Escalabilidade). |
+
+### C. Orquestração e Contêinerização (Docker)
+
+Para garantir a reprodutibilidade e a execução padronizada, a implantação deve ser feita via **Docker Compose**. Os serviços essenciais incluem: a API (**FastAPI**), o Broker de Fila (**Redis**) e o Worker de Inferência (**Celery**).
+
+O Worker de Inferência é o componente mais complexo, pois precisa de otimizações para compilação C/C++ (`llama.cpp`) e bibliotecas de processamento de imagem.
+
+*   **Otimização do Dockerfile:** A compilação de `llama-cpp-python` exige ferramentas de desenvolvimento e dependências C/C++. Além disso, o pré-processamento de imagens no worker exige bibliotecas como OpenCV ou Pillow, que podem ter dependências de sistema (e.g., `libopencv-dev`).
+*   **Melhores Práticas:** Recomenda-se o uso de imagens base Python slim (e.g., `python:3.x-slim`). Para manter o tamanho da imagem final reduzido e seguro, deve-se adotar uma construção *multi-stage* e instalar as dependências de sistema via `apt-get install -y --no-install-recommends` seguida da remoção do cache (`rm -rf /var/lib/apt/lists/*`).
+
+## III. O Pipeline de Processamento de Imagem e Engenharia de Prompt
+
+### A. Pré-processamento Obrigatório de Imagem
+
+O desempenho do MLLM depende da qualidade e da consistência da entrada visual. Imagens de produtos reais frequentemente apresentam variações de iluminação, cor e ruído que podem levar a resultados inconsistentes.
+
+O worker deve utilizar bibliotecas como **OpenCV** ou **Pillow** para executar:
+
+1.  **Redimensionamento e Normalização Dimensional:** Os Vision Encoders (como o CLIP ViT-L/14) são treinados em dimensões fixas. O redimensionamento garante que a imagem esteja em um formato padronizado (e.g., 224x224 ou 336x336) antes de ser processada.
+2.  **Ajuste de Domínio (Domain Adaptation):** Técnicas como correção de cor, realce de contraste ou correspondência de histograma (e.g., `histogram_match` usando espaços de cor como YCrCb) são cruciais para reduzir a discrepância (*domain shift*) entre o ambiente de treinamento do modelo e as condições da imagem de produto real. Isso aumenta a resiliência e a precisão do MLLM na identificação de atributos.
+
+### B. Engenharia de Prompt para Tarefas Multimodais
+
+O texto de instrução (o prompt) é a interface de controle do MLLM. Para atingir os três objetivos—identificação, categorização e descrição—o prompt deve ser dividido e otimizado para extração de dados estruturados.
+
+1.  **Extração de Atributos:** O prompt deve direcionar o MLLM a se comportar como um "analista de catálogo" e extrair informações factuais. A categorização pode ser feita em um modo *zero-shot* ou baseada em uma lista de categorias fornecidas no prompt.
+2.  **Geração de Texto Longo:** A geração da descrição exige uma instrução de estilo e volume (e.g., "gere uma descrição otimizada para SEO, focando em benefícios, com no mínimo 150 palavras").
+
+## IV. Garantia da Qualidade do Output: Estruturação de Dados (JSON Schema)
+
+Para que a saída do MLLM possa preencher automaticamente um card de produto, ela deve ser 100% confiável e aderente a um esquema de dados rígido. A geração de texto livre pelo LLM é inerentemente propensa a variações, o que exigiria lógica complexa de parsing e validação.
+
+### A. Pydantic como Contrato de Dados
+
+A biblioteca **Pydantic** resolve este problema ao permitir a definição de um esquema de dados rigoroso usando *type hints* em Python.
+
+1.  **Definição de Esquema:** Cria-se uma classe que herda de `pydantic.BaseModel` definindo campos como `product_name`, `category_standard` e `description_long`.
+2.  **Geração de Instruções:** As funções `Field` e as *docstrings* nos modelos Pydantic servem como instruções adicionais que o LLM utilizará para entender o tipo de conteúdo esperado em cada campo.
+3.  **Validação:** O Pydantic garante que, se o output do modelo for JSON, ele será validado contra o esquema antes de ser consumido pelo restante do pipeline, evitando falhas de tipagem ou ausência de campos.
+
+### B. Forçando o JSON com `llama-cpp-python`
+
+A simples solicitação de um formato JSON no prompt é insuficiente. A implementação requer o uso de *constrained decoding* (decodificação restrita) para garantir que a gramática da saída seja estritamente JSON.
+
+O `llama-cpp-python` suporta nativamente a restrição da resposta a um JSON válido, ou a um JSON Schema específico, através do argumento `response_format` na chamada de inferência. Este mecanismo utiliza o esquema Pydantic (convertido para JSON Schema) para guiar o processo de geração de tokens, garantindo que apenas tokens que formam um JSON sintaticamente correto (e aderente ao esquema) sejam selecionados.
+
+Embora LLMs avançados possuam funcionalidade de "Function Calling" (como os modelos OpenAI), a implementação `llama.cpp` atinge o mesmo nível de confiabilidade para modelos GGUF, que normalmente não possuem essa capacidade nativa. Esta é uma funcionalidade essencial para a automação pretendida.
+
+**Tabela 3: Esquema Pydantic Essencial para Ficha Técnica**
+
+| Campo (Pydantic) | Tipo de Dado | Descrição | Função no MLLM |
+| :--- | :--- | :--- | :--- |
+| `product_name` | `str` | Nome de e-commerce conciso e otimizado. | Geração de texto conciso. |
+| `category_standard` | `str` | Categoria de alto nível (e.g., "Móveis", "Eletrônicos"). | Classificação zero-shot. |
+| `description_long` | `str` | Descrição rica em detalhes, materiais e benefícios (min. 150 palavras). | Geração de texto detalhado. |
+| `color_primary` | `str` | Cor dominante do produto (em português). | Extração de atributos. |
+| `features_list` | `List[str]` | Lista de três características principais em tópicos. | Sumarização e extração de *selling points*. |
+
+## V. Guia Prático de Implementação e Otimização Avançada
+
+### A. Configuração do Ambiente e Carregamento do MLLM
+
+A implementação deve ser centrada no Celery Worker. A biblioteca `llama-cpp-python` é o runtime de inferência.
+
+1.  **Carregamento do Modelo:** O modelo BakLLaVA deve ser carregado utilizando a classe apropriada (e.g., `LLaVACPPModel` em bibliotecas de alto nível baseadas em `llama.cpp`). Este processo requer o carregamento dos dois arquivos GGUF (o LLM principal e o modelo CLIP).
+2.  **Inicialização Única:** É imperativo que a instanciação e o carregamento dos pesos do MLLM na VRAM/RAM ocorra **apenas uma vez**, durante a inicialização do Celery Worker, e não a cada nova tarefa. Isso elimina o alto custo de setup da memória para cada requisição.
+
+### B. Otimizações de Memória e Desempenho em Tempo de Execução
+
+As otimizações em tempo de execução são fundamentais para maximizar a utilização do hardware de consumo.
+
+1.  **Inferência Híbrida (CPU+GPU Offloading):** O `llama.cpp` foi projetado para gerenciar o uso de memória de forma inteligente. Em sistemas com VRAM insuficiente para carregar todas as camadas do modelo (um cenário comum com 8GB de VRAM), a funcionalidade de *offloading* permite carregar as camadas mais sensíveis à latência na GPU e descarregar as camadas restantes para a RAM, executando-as na CPU. Isso otimiza o uso total dos recursos disponíveis.
+2.  **Seleção de Quantização:** A escolha da quantização GGUF (e.g., Q4_K_M, Q5_K_M, Q8_0) é um trade-off direto entre performance (velocidade/precisão) e tamanho de memória. Modelos com quantização mais baixa (e.g., Q4_K_M) oferecem maior eficiência e portabilidade, sendo adequados para a primeira implementação, enquanto Q8_0 oferece melhor precisão, mas exige mais memória.
+
+### C. Monitoramento do Pipeline
+
+Um sistema de MLOps robusto requer observabilidade.
+
+1.  **Rastreamento de Tarefas:** O endpoint FastAPI deve imediatamente retornar um `task_id` ao receber a imagem. Este ID permite que o cliente rastreie o estado da tarefa assíncrona (e.g., `PENDING`, `STARTED`, `SUCCESS`), minimizando o tempo de espera percebido.
+2.  **Dashboard de Observabilidade:** Recomenda-se a utilização do **Flower**, o dashboard oficial do Celery. O Flower fornece monitoramento em tempo real do estado dos workers (capacidade e saúde) e métricas importantes como a latência de execução de tarefas e as taxas de sucesso/falha, permitindo o ajuste fino dos recursos.
+
+## VI. Conclusões e Recomendações
+
+A análise confirma que o projeto de criar um sistema local e automatizado de catalogação de produtos usando MLLMs é altamente viável, desde que a arquitetura seja estritamente assíncrona e utilize o ecossistema de otimização `llama.cpp`/GGUF.
+
+### A. Síntese da Viabilidade Técnica
+
+A chave para o sucesso reside na gestão eficiente de dois desafios técnicos interligados: a memória do modelo e a latência da inferência.
+
+1.  **Seleção de Modelo Otimizada:** O **BakLLaVA GGUF** (baseado em Mistral 7B) é a escolha técnica superior. Sua arquitetura multimodal e a distribuição quantizada via GGUF o tornam ideal para hardware com 8GB a 16GB de VRAM. A atenção deve ser dada à memória combinada do LLM e do Codificador Visual (CLIP).
+2.  **Arquitetura MLOps Essencial:** A adoção do stack **FastAPI + Celery + Redis** não é opcional; é um requisito funcional para desacoplar a requisição HTTP da tarefa de inferência, garantindo a responsividade do sistema.
+3.  **Output Determinístico:** A integração do **Pydantic** com o *constrained decoding* nativo do `llama-cpp-python` é fundamental para traduzir a capacidade generativa do LLM em dados estruturados e validados (JSON), permitindo a automação direta do preenchimento de cards de produtos.
+
+### B. Recomendações de Implementação Acionáveis
+
+Para a fase de desenvolvimento, recomendam-se as seguintes ações:
+
+1.  **Priorizar a Estratégia de Armazenamento:** Implementar imediatamente o mecanismo de salvamento de arquivos no FastAPI para um volume compartilhado (Docker Volume) e passar apenas o caminho/ID do arquivo para o Celery Worker, evitando a sobrecarga do broker de mensagens com dados binários de imagem.
+2.  **Ajuste Fino de Hardware e Quantização:** Realizar benchmarks internos com diferentes quantizações GGUF (Q4_K_M vs. Q5_K_M) no hardware de destino, monitorando a taxa de tokens/segundo. Para hardware com menos de 12GB de VRAM, configurar o *offloading* de camadas para a CPU (`n_gpu_layers < total_layers`) é mandatório.
+3.  **Rigor na Engenharia de Prompt e Pré-processamento:** Desenvolver prompts que não apenas solicitem o formato JSON Pydantic, mas que também incorporem a lista de categorias e o requisito de descrição mínima (150 palavras) para guiar o MLLM. Integrar bibliotecas de pré-processamento (OpenCV/Pillow) no worker para garantir a normalização visual das imagens antes da ingestão pelo CLIP.
