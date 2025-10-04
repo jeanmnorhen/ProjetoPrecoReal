@@ -1,50 +1,38 @@
-# Progresso do Projeto "Preço Real"
-
-*Última atualização: 4 de outubro de 2025*
+# Progresso do Projeto "Preço Real" - 04/10/2025
 
 ## Visão Geral
 
-O projeto "Preço Real" é uma plataforma de comparação de preços com uma arquitetura de microsserviços, projetada para ser uma ferramenta para consumidores e lojistas.
+O projeto está em uma fase de transição arquitetônica importante, consolidando o ambiente de desenvolvimento para operar inteiramente com Docker Compose. A documentação foi centralizada e expandida para refletir uma nova e robusta arquitetura para o serviço de Inteligência Artificial.
 
-## Status dos Componentes
+## Status por Área
 
-### Backend (Microsserviços)
+### 1. Documentação
+- **Concluído:** A documentação foi significativamente refatorada. Planos antigos (`Plano.md`, `PlanoFrontEnd_admin.md`, etc.) foram substituídos por dois documentos abrangentes:
+  - `Documentacao.md`: Contém a visão geral, a arquitetura de microsserviços e os planos de frontend.
+  - `Modelos.md`: Um relatório técnico detalhado sobre a nova arquitetura de IA multimodal para execução local.
+- **Pendência:** Os novos arquivos de documentação (`Documentacao.md`, `Modelos.md`) foram criados mas ainda não foram adicionados ao controle de versão (Git). Os arquivos antigos foram excluídos localmente, mas a remoção ainda não foi commitada.
 
-Todos os microsserviços de backend estão implementados e operacionais, utilizando Python/Flask, com comunicação via Kafka e uma abordagem de banco de dados poliglota.
+### 2. Infraestrutura e Ambiente Local
+- **Concluído:** O arquivo `docker-compose.yml` foi atualizado para refletir a nova arquitetura, incluindo:
+  - A separação do `servico-agentes-ia` em `servico-agentes-ia-api` (FastAPI) e `servico-agentes-ia-worker` (Celery).
+  - A adição do `Redis` para atuar como broker de mensagens para o Celery.
+  - A definição de um volume compartilhado (`uploads_data`) para a troca de imagens entre a API e o worker de IA.
+- **Estado Atual:** O ambiente Docker **não está em execução**. Nenhum contêiner foi criado ou iniciado.
 
--   **`servico-usuarios`**: **Operacional.** Gerencia perfis, autenticação (Firebase), localização (PostGIS) e permissões.
--   **`servico-lojas`**: **Operacional.** Gerencia lojas (Firestore) e suas localizações (PostGIS).
--   **`servico-produtos`**: **Operacional.** Gerencia o catálogo de produtos canônicos e de lojas (Firestore).
--   **`servico-ofertas`**: **Operacional.** Gerencia ofertas de produtos (Firestore).
--   **`servico-busca`**: **Operacional.** Fornece busca via Elasticsearch, sincronizado por eventos Kafka.
--   **`servico-agentes-ia`**: **Operacional.** Orquestra o Google Gemini para análise de imagens e alimentação do catálogo.
--   **`servico-monitoramento`**: **Operacional.** Coleta métricas de negócio e de sistema no InfluxDB.
--   **`servico-healthcheck`**: **Operacional.** Centraliza a verificação de status dos demais serviços.
+### 3. Desenvolvimento de Backend
+- **Concluído:**
+  - A refatoração para remover a dependência do Confluent Cloud foi finalizada, com os serviços agora apontando para a instância do Kafka no Docker.
+  - A implementação da nova arquitetura do `servico-agentes-ia` para suportar o modelo de IA local foi concluída, conforme os commits recentes.
+- **Próximo Passo:** É necessário construir e iniciar o ambiente Docker para validar a integração e a comunicação entre os serviços.
 
-### Frontend (Dashboard Administrativo - `frontend-tester`)
+### 4. Git (Controle de Versão)
+- **Estado Atual:** O branch `master` está atualizado com o repositório remoto, mas possui alterações locais pendentes:
+  - **Modified:** `Progresso_do_projeto.md`
+  - **Deleted:** `Plano.md`, `PlanoFrontEnd_admin.md`, `RELATORIO_DE_IMPLEMENTACAO_MODELOS.md`, `plano_transicao_para_llm_local.md`
+  - **Untracked:** `Documentacao.md`, `Modelos.md`
 
--   **Status:** Concluído e Operacional.
--   **Tecnologias:** Next.js, React, Tailwind CSS.
--   **Funcionalidades Implementadas:**
-    -   Autenticação de administrador com Firebase.
-    -   Dashboard de métricas de negócio e uso (`/admin/dashboard`).
-    -   Sistema de gestão de críticas de produtos (`/admin/criticas`).
-    -   Fluxo completo de "Alimentador de Catálogo com IA" (`/admin/canonicos`), incluindo a fila de aprovação de produtos (`/admin/pending-products`).
-    -   Páginas de gerenciamento para Lojas, Usuários e Ofertas.
+## Próximos Passos Críticos
 
-### Frontend (Aplicativo Móvel - `MobileApp`)
-
--   **Status:** Não Iniciado.
--   **Tecnologias Planejadas:** React Native.
-
-## Últimas Alterações Relevantes
-
--   **Remoção do Confluent Cloud:** A configuração de todos os microsserviços foi simplificada para utilizar exclusivamente o ambiente Kafka local (Docker), removendo a lógica de conexão com o Confluent Cloud.
-
-## Próximos Passos (Foco Atual)
-
-Conforme o `Plano.md`, o foco principal do projeto agora é:
-
-1.  **[FOCO PRINCIPAL]** Iniciar o desenvolvimento do **Aplicativo Móvel** em React Native.
-2.  Ampliar a cobertura de testes automatizados para o Dashboard Administrativo.
-3.  Continuar a revisão de segurança e otimização da infraestrutura.
+1.  **Commit das Alterações:** Fazer o "stage" e "commit" das alterações nos arquivos de documentação para alinhar o repositório com o estado atual do projeto.
+2.  **Inicialização do Ambiente:** Executar `docker-compose up -d --build` para construir as imagens dos serviços e iniciar todo o ambiente local.
+3.  **Validação:** Após a inicialização, verificar os logs dos contêineres para garantir que todos os serviços estão se comunicando corretamente, com atenção especial à nova arquitetura do `servico-agentes-ia`.
