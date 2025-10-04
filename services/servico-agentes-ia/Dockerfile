@@ -20,7 +20,7 @@ ENV FORCE_CMAKE=1
 ENV CMAKE_ARGS="-DGGML_BLAS=ON -DGGML_BLAS_VENDOR=OpenBLAS"
 
 # Install python dependencies, forcing llama-cpp-python to be rebuilt
-RUN pip install --no-cache-dir -r requirements.txt --force-reinstall --no-binary :all: llama-cpp-python
+RUN LDFLAGS="-pthread" pip install --no-cache-dir -r requirements.txt --force-reinstall --no-binary :all: llama-cpp-python
 
 # Create a directory for the models and download them
 RUN mkdir -p /app/models
