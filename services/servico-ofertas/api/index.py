@@ -77,23 +77,11 @@ if Producer:
     try:
         kafka_bootstrap_server = os.environ.get('KAFKA_BOOTSTRAP_SERVER')
         if kafka_bootstrap_server:
-            kafka_api_key = os.environ.get('KAFKA_API_KEY')
-            if kafka_api_key:
-                # Cloud Kafka configuration
-                print("Configurando produtor Kafka para ambiente de nuvem (SASL)...")
-                kafka_conf = {
-                    'bootstrap.servers': kafka_bootstrap_server,
-                    'security.protocol': 'SASL_SSL',
-                    'sasl.mechanisms': 'PLAIN',
-                    'sasl.username': kafka_api_key,
-                    'sasl.password': os.environ.get('KAFKA_API_SECRET')
-                }
-            else:
-                # Local Docker Kafka configuration
-                print("Configurando produtor Kafka para ambiente local (sem SASL)...")
-                kafka_conf = {
-                    'bootstrap.servers': kafka_bootstrap_server
-                }
+            # Local Docker Kafka configuration
+            print("Configurando produtor Kafka para ambiente local (sem SASL)...")
+            kafka_conf = {
+                'bootstrap.servers': kafka_bootstrap_server
+            }
             producer = Producer(kafka_conf)
             print("Produtor Kafka inicializado com sucesso.")
         else:

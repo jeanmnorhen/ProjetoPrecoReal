@@ -71,27 +71,13 @@ if Consumer:
     try:
         kafka_bootstrap_server = os.environ.get('KAFKA_BOOTSTRAP_SERVER')
         if kafka_bootstrap_server:
-            kafka_api_key = os.environ.get('KAFKA_API_KEY')
-            if kafka_api_key:
-                # Cloud Kafka configuration
-                print("Configurando consumidor Kafka para ambiente de nuvem (SASL)...")
-                kafka_conf = {
-                    'bootstrap.servers': kafka_bootstrap_server,
-                    'group.id': 'search_service_group_cron_v2',
-                    'auto.offset.reset': 'earliest',
-                    'security.protocol': 'SASL_SSL',
-                    'sasl.mechanisms': 'PLAIN',
-                    'sasl.username': kafka_api_key,
-                    'sasl.password': os.environ.get('KAFKA_API_SECRET')
-                }
-            else:
-                # Local Docker Kafka configuration
-                print("Configurando consumidor Kafka para ambiente local (sem SASL)...")
-                kafka_conf = {
-                    'bootstrap.servers': kafka_bootstrap_server,
-                    'group.id': 'search_service_group_cron_v2',
-                    'auto.offset.reset': 'earliest'
-                }
+            # Local Docker Kafka configuration
+            print("Configurando consumidor Kafka para ambiente local (sem SASL)...")
+            kafka_conf = {
+                'bootstrap.servers': kafka_bootstrap_server,
+                'group.id': 'search_service_group_cron_v2',
+                'auto.offset.reset': 'earliest'
+            }
             kafka_consumer_instance = Consumer(kafka_conf)
             kafka_consumer_instance.subscribe(['eventos_usuarios', 'eventos_produtos', 'eventos_lojas', 'eventos_ofertas'])
             print("Consumidor Kafka inicializado com sucesso.")

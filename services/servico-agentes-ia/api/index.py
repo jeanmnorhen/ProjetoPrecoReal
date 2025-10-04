@@ -77,23 +77,11 @@ def get_producer():
         try:
             kafka_bootstrap_server = os.environ.get('KAFKA_BOOTSTRAP_SERVER')
             if kafka_bootstrap_server:
-                kafka_api_key = os.environ.get('KAFKA_API_KEY')
-                if kafka_api_key:
-                    # Cloud Kafka configuration
-                    print("Configurando produtor Kafka para ambiente de nuvem (SASL)...")
-                    kafka_conf = {
-                        'bootstrap.servers': kafka_bootstrap_server,
-                        'security.protocol': 'SASL_SSL',
-                        'sasl.mechanisms': 'PLAIN',
-                        'sasl.username': kafka_api_key,
-                        'sasl.password': os.environ.get('KAFKA_API_SECRET')
-                    }
-                else:
-                    # Local Docker Kafka configuration
-                    print("Configurando produtor Kafka para ambiente local (sem SASL)...")
-                    kafka_conf = {
-                        'bootstrap.servers': kafka_bootstrap_server
-                    }
+                # Local Docker Kafka configuration
+                print("Configurando produtor Kafka para ambiente local (sem SASL)...")
+                kafka_conf = {
+                    'bootstrap.servers': kafka_bootstrap_server
+                }
                 producer = Producer(kafka_conf)
                 print("Produtor Kafka inicializado com sucesso (lazy).")
             else:
@@ -111,27 +99,13 @@ def get_kafka_consumer():
         try:
             kafka_bootstrap_server = os.environ.get('KAFKA_BOOTSTRAP_SERVER')
             if kafka_bootstrap_server:
-                kafka_api_key = os.environ.get('KAFKA_API_KEY')
-                if kafka_api_key:
-                    # Cloud Kafka configuration
-                    print("Configurando consumidor Kafka para ambiente de nuvem (SASL)...")
-                    kafka_conf = {
-                        'bootstrap.servers': kafka_bootstrap_server,
-                        'group.id': 'ai_agents_group_v1',
-                        'auto.offset.reset': 'earliest',
-                        'security.protocol': 'SASL_SSL',
-                        'sasl.mechanisms': 'PLAIN',
-                        'sasl.username': kafka_api_key,
-                        'sasl.password': os.environ.get('KAFKA_API_SECRET')
-                    }
-                else:
-                    # Local Docker Kafka configuration
-                    print("Configurando consumidor Kafka para ambiente local (sem SASL)...")
-                    kafka_conf = {
-                        'bootstrap.servers': kafka_bootstrap_server,
-                        'group.id': 'ai_agents_group_v1',
-                        'auto.offset.reset': 'earliest'
-                    }
+                # Local Docker Kafka configuration
+                print("Configurando consumidor Kafka para ambiente local (sem SASL)...")
+                kafka_conf = {
+                    'bootstrap.servers': kafka_bootstrap_server,
+                    'group.id': 'ai_agents_group_v1',
+                    'auto.offset.reset': 'earliest'
+                }
                 kafka_consumer_instance = Consumer(kafka_conf)
                 kafka_consumer_instance.subscribe(['tarefas_ia'])
                 print("Consumidor Kafka inicializado com sucesso (lazy).")
